@@ -4,11 +4,11 @@ using System.Linq;
 
 namespace GameForestMatch3.Logic
 {
-    public class Grid
+    public class Field
     {
         public const int SIZE = 8;
 
-        int[][] HorizontalTwoInALinePattern =
+        readonly int[][] HorizontalTwoInALinePattern =
         {
               new int[] { 1, 0 },
               new int[] {-2, 0 },
@@ -19,13 +19,13 @@ namespace GameForestMatch3.Logic
               new int[] { 3, 0 }
         };
 
-        int[][] HorizontalSeparatePattern =
+        readonly int[][] HorizontalSeparatePattern =
         {
               new int[] { 1,-1 },
               new int[] { 1, 1 }
         };
 
-        int[][] VerticalTwoInALinePattern =
+        readonly int[][] VerticalTwoInALinePattern =
         {
               new int[] { 0,-2 },
               new int[] {-1,-1 },
@@ -36,14 +36,14 @@ namespace GameForestMatch3.Logic
               new int[] { 1, 3 }
         };
 
-        int[][] VerticalTwoSeparatePattern =
+        readonly int[][] VerticalTwoSeparatePattern =
         {
               new int[] {-1, 1 },
               new int[] { 1, 1 }
         };
 
 
-        int[][] NeighborsPattern =
+        readonly int[][] NeighborsPattern =
         {
               new int[] { 1, 0 },
               new int[] {-1, 0 },
@@ -51,15 +51,21 @@ namespace GameForestMatch3.Logic
               new int[] { 0, 1 }
         };
 
-        Cell[,] Cells;
+        Cell[,] Grid;
 
         Random Rnd = new Random();
 
-        readonly List<GemType> TypeList;
+        readonly List<GemType> TypeList = Enum.GetValues(typeof(GemType)).OfType<GemType>().ToList();
 
-        public Grid()
+
+        public static bool FitGrid(int col, int row)
         {
-            TypeList = Enum.GetValues(typeof(GemType)).OfType<GemType>().ToList();
+            return col >= 0 && col < SIZE && row >= 0 && row < SIZE;
+        }
+
+
+        public Field()
+        {
             InitGrid();
             CheckAndFixGrid();
         }
@@ -67,12 +73,12 @@ namespace GameForestMatch3.Logic
 
         void InitGrid()
         {
-            Cells = new Cell[SIZE, SIZE];
+            Grid = new Cell[SIZE, SIZE];
             for (var col = 0; col < SIZE; col++)
             {
                 for (var row = 0; row < SIZE; row++)
                 {
-                    Cells[col, row] = new Cell
+                    Grid[col, row] = new Cell
                     {
                         Type = GenerateType(),
                         Col = col,
@@ -137,7 +143,7 @@ namespace GameForestMatch3.Logic
 
         bool Match(int col, int row, int[][] must, int[][] need)
         {
-            var currentType = Cells[col, row].Type;
+            var currentType = Grid[col, row].Type;
 
             // Check if we have all from "must"
             for (var i = 0; i < must.Length; i++)
@@ -161,8 +167,8 @@ namespace GameForestMatch3.Logic
 
         public bool HasGivenType(int col, int row, GemType type)
         {
-            if ((col < 0) || (col > SIZE - 1) || (row < 0) || (row > SIZE - 1)) return false;
-            return (Cells[col, row].Type == type);
+            if (!FitGrid(col,row)) return false;
+            return (Grid[col, row].Type == type);
         }
 
 
@@ -211,7 +217,7 @@ namespace GameForestMatch3.Logic
             // it should have enough space (another 3 cells) to place this line in a grid
             var rndCol = Rnd.Next(SIZE - 3);
             var rndRow = Rnd.Next(SIZE - 3);
-            return Cells[rndCol, rndRow];
+            return Grid[rndCol, rndRow];
         }
 
 
@@ -225,14 +231,14 @@ namespace GameForestMatch3.Logic
             {
                 return new List<Cell>
                 {
-                    cell, Cells[col, row + 1], Cells[col, row + 2], Cells[col, row + 3]
+                    cell, Grid[col, row + 1], Grid[col, row + 2], Grid[col, row + 3]
                 };
             }
 
-            // Take next 3 cells in the col
+            // Take next 3 cells in the column
             return new List<Cell>
                 {
-                    cell, Cells[col + 1, row], Cells[col + 2, row], Cells[col + 3, row]
+                    cell, Grid[col + 1, row], Grid[col + 2, row], Grid[col + 3, row]
                 };
         }
 
@@ -279,8 +285,8 @@ namespace GameForestMatch3.Logic
         {
             col = col + shift[0];
             row = row + shift[1];
-            if (col < 0 || col >= SIZE || row < 0 || row >= SIZE) return null;
-            return Cells[col, row];
+            if (!FitGrid(col, row)) return null;
+            return Grid[col, row];
         }
 
 
@@ -321,12 +327,12 @@ namespace GameForestMatch3.Logic
 
         List<Cell> GetHorizontalMatch(int col, int row)
         {
-            var match = new List<Cell> { Cells[col, row] };
+            var match = new List<Cell> { Grid[col, row] };
             for (var i = 1; col + i < SIZE; i++)
             {
-                if (Cells[col, row].Type == Cells[col + i, row].Type)
+                if (Grid[col, row].Type == Grid[col + i, row].Type)
                 {
-                    match.Add(Cells[col + i, row]);
+                    match.Add(Grid[col + i, row]);
                 }
                 else
                 {
@@ -339,12 +345,12 @@ namespace GameForestMatch3.Logic
 
         List<Cell> GetVerticalMatch(int col, int row)
         {
-            var match = new List<Cell> { Cells[col, row] };
+            var match = new List<Cell> { Grid[col, row] };
             for (var i = 1; row + i < SIZE; i++)
             {
-                if (Cells[col, row].Type == Cells[col, row + i].Type)
+                if (Grid[col, row].Type == Grid[col, row + i].Type)
                 {
-                    match.Add(Cells[col, row + i]);
+                    match.Add(Grid[col, row + i]);
                 }
                 else
                 {
@@ -378,9 +384,9 @@ namespace GameForestMatch3.Logic
             {
                 for (var row = 0; row < SIZE; row++)
                 {
-                    if (Cells[col, row] == null)
+                    if (Grid[col, row] == null)
                     {
-                        MoveDown(Cells[col, row]);
+                        MoveDown(col, row);
                     };
                 }
             }
@@ -389,9 +395,9 @@ namespace GameForestMatch3.Logic
             {
                 for (var row = 0; row < SIZE; row++)
                 {
-                    if (Cells[col, row] == null)
+                    if (Grid[col, row] == null)
                     {
-                        Cells[col, row] = new Cell
+                        Grid[col, row] = new Cell
                         {
                             Type = GenerateType(),
                             Col = col,
@@ -406,12 +412,13 @@ namespace GameForestMatch3.Logic
 
         void MoveDown(int removedCol, int removedRow)
         {
-            for (var row = removedRow - 1; row >= 0; row--) {
-                if (Cells[removedCol, row] != null)
+            for (var row = removedRow - 1; row >= 0; row--) 
+            {
+                if (Grid[removedCol, row] != null)
                 {
-                    Cells[removedCol, row].Row++;
-                    Cells[removedCol, row + 1] = Cells[removedCol, row];
-                    Cells[removedCol, row] = null;
+                    Grid[removedCol, row].Row++;
+                    Grid[removedCol, row + 1] = Grid[removedCol, row];
+                    Grid[removedCol, row] = null;
                 }
             }
         }
@@ -425,7 +432,7 @@ namespace GameForestMatch3.Logic
                 {
                     var col = cell.Col;
                     var row = cell.Row;
-                    Cells[col, row] = null;
+                    Grid[col, row] = null;
                     MoveDown(col, row);
                 }
             }
