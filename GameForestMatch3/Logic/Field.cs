@@ -51,11 +51,36 @@ namespace GameForestMatch3.Logic
               new int[] { 0, 1 }
         };
 
-        Cell[,] Grid;
+        public Cell[,] Grid;
 
         Random Rnd = new Random();
 
-        readonly List<GemType> TypeList = Enum.GetValues(typeof(GemType)).OfType<GemType>().ToList();
+        int _points;
+        public int Points
+        {
+            get
+            {
+                return _points;
+            }
+            set
+            {
+                _points = value;
+                PointsChanged.Invoke(null, new EventArgs());
+            }
+        }
+
+        public event EventHandler PointsChanged;
+
+
+
+        public Cell LastTouched { get; set; }
+        public Cell FirstTouched { get; set; }
+
+        public event EventHandler TouchedChanged;
+
+
+
+        readonly List<CellType> TypeList = Enum.GetValues(typeof(CellType)).OfType<CellType>().ToList();
 
 
         public static bool FitGrid(int col, int row)
@@ -63,6 +88,11 @@ namespace GameForestMatch3.Logic
             return col >= 0 && col < SIZE && row >= 0 && row < SIZE;
         }
 
+        public void ResetSelected()
+        {
+            FirstTouched = null;
+            LastTouched = null;
+        }
 
         public Field()
         {
@@ -165,9 +195,9 @@ namespace GameForestMatch3.Logic
         }
 
 
-        public bool HasGivenType(int col, int row, GemType type)
+        public bool HasGivenType(int col, int row, CellType type)
         {
-            if (!FitGrid(col,row)) return false;
+            if (!FitGrid(col, row)) return false;
             return (Grid[col, row].Type == type);
         }
 
@@ -185,7 +215,7 @@ namespace GameForestMatch3.Logic
             possibility.ForEach((obj) => obj.Type = possibilityType);
 
             // Then change one cell type to match X Y X X pattern
-            possibility[1].Type = GenerateType(new List<GemType> { possibilityType });
+            possibility[1].Type = GenerateType(new List<CellType> { possibilityType });
 
             // Change neighbors types to be sure they make no more matches
             RePaintNeighbors(possibility);
@@ -258,13 +288,20 @@ namespace GameForestMatch3.Logic
         }
 
 
-        GemType GetNewGemType(Cell cell)
+        CellType GetNewGemType(Cell cell)
         {
             var neighbors = GetNeighbors(cell);
-            var types = neighbors.Select(item => item.Type).Distinct().ToList();
+            var allTypes = neighbors.Select(item => item.Type);
+            var types = allTypes.Distinct().ToList();
             if (!types.Contains(cell.Type))
             {
                 types.Add(cell.Type);
+            }
+
+            // All neighbors are already different
+            if (types.Count() == TypeList.Count())
+            {
+                return cell.Type;
             }
             return GenerateType(types);
         }
@@ -275,7 +312,11 @@ namespace GameForestMatch3.Logic
             var result = new List<Cell>();
             foreach (var neighbor in NeighborsPattern)
             {
-                result.Add(GetShiftedCell(cell.Col, cell.Row, neighbor));
+                var neighborCell = GetShiftedCell(cell.Col, cell.Row, neighbor);
+                if (neighborCell != null)
+                {
+                    result.Add(neighborCell);
+                }
             }
             return result;
         }
@@ -361,15 +402,17 @@ namespace GameForestMatch3.Logic
         }
 
 
-        GemType GenerateType(List<GemType> except = null)
+        CellType GenerateType(List<CellType> except = null)
         {
+
+
+            if (except == null) except = new List<CellType>();
+
             // Can not except more types than total amount of types
             if (except.Distinct().Count() >= TypeList.Count())
             {
                 throw new Exception("Can not generate a type");
             }
-
-            if (except == null) except = new List<GemType>();
 
             // There will be at least one unused GemType since we have 5 types
             var unictypes = TypeList.Except(except).ToList();
@@ -378,19 +421,8 @@ namespace GameForestMatch3.Logic
         }
 
 
-        void FillEmpltyPlaces()
+        public void FillEmpltyPlaces()
         {
-            for (var col = 0; col < SIZE; col++)
-            {
-                for (var row = 0; row < SIZE; row++)
-                {
-                    if (Grid[col, row] == null)
-                    {
-                        MoveDown(col, row);
-                    };
-                }
-            }
-
             for (var col = 0; col < SIZE; col++)
             {
                 for (var row = 0; row < SIZE; row++)
@@ -403,39 +435,209 @@ namespace GameForestMatch3.Logic
                             Col = col,
                             Row = row
                         };
+
+                        CellCreated.Invoke(null, Grid[col,row]);
                     };
                 }
             }
-            CheckAndFixGrid();
+
+            // TODO вернуть когда надо
+            //CheckAndFixGrid();
         }
 
 
         void MoveDown(int removedCol, int removedRow)
         {
-            for (var row = removedRow - 1; row >= 0; row--) 
+            var cellsToMove = new List<Cell>();
+            // Since Cocos2d has Y axe on the bottom of the screen, we have upside down field,
+            // so cells fall upwards :/
+            for (var row = removedRow + 1; row < SIZE; row++)
             {
                 if (Grid[removedCol, row] != null)
                 {
-                    Grid[removedCol, row].Row++;
-                    Grid[removedCol, row + 1] = Grid[removedCol, row];
+                    Grid[removedCol, row].Row--;
+                    Grid[removedCol, row - 1] = Grid[removedCol, row];
                     Grid[removedCol, row] = null;
+                    cellsToMove.Add(Grid[removedCol, row]);
+                }
+            }
+
+            MovedDown.Invoke(null, cellsToMove);
+        }
+
+        public void DestroyMatches()
+        {
+            var matches = GetMatches();
+
+            if (!matches.Any())
+            {
+                ResetSelected();
+                TouchedChanged.Invoke(null, new EventArgs());
+                return;
+            }
+
+            Consolidate(matches);
+
+            for (var i = 0; i < matches.Count(); i++)
+            {
+                foreach (var cell in matches[i])
+                {
+                    var col = cell.Col;
+                    var row = cell.Row;
+
+                    Points += cell.Points;
+                    Cell bonusCell = null;//GetBonusCell(cell, matches[i], LastTouched);
+
+                    CellDeleted.Invoke(null, cell);
+                    // TODO check if add on the fly works correctly
+                    if (cell is BonusCell)
+                    {
+                        var toDestroy = ((BonusCell)cell).Action(Grid);
+                        matches.Add(toDestroy);
+                    }
+
+                    Grid[col, row] = bonusCell;
+                    MoveDown(col, row);
+                    // TODO destroy matches
                 }
             }
         }
 
-        void DestroyMatches()
+        public event EventHandler<Cell> CellDeleted;
+        public event EventHandler<List<Cell>> MovedDown;
+        public event EventHandler<Cell> CellCreated;
+
+        BonusCell GetBonusCell(Cell cell, List<Cell> match, Cell lastTouched)
         {
-            var matches = GetMatches();
-            foreach (var match in matches)
+            if (match.Count() < 4)
             {
-                foreach (var cell in match)
+                return null;
+            }
+
+            if (match.Count() == 4)
+            {
+                // Bonus appears on the last_touched_place 
+                // or in any place if the match is appeared after appearing new cells
+                var bonusPlaceCell = lastTouched ?? match.First();
+                return new LineBonus
                 {
-                    var col = cell.Col;
-                    var row = cell.Row;
-                    Grid[col, row] = null;
-                    MoveDown(col, row);
+                    IsVertical = IsVertical(match),
+                    Type = cell.Type,
+                    Col = bonusPlaceCell.Col,
+                    Row = bonusPlaceCell.Row
+                };
+            }
+
+
+            if (match.Count() > 4)
+            {
+                var crossCenter = GetCrossCenter(match);
+                // Bonus appears on the cross center, or last_touched_place, 
+                // or in any place if the match is appeared after appearing new cells
+                var bonusPlaceCell = crossCenter ?? lastTouched ?? match.First();
+                return new BombBonus
+                {
+                    Type = cell.Type,
+                    Col = bonusPlaceCell.Col,
+                    Row = bonusPlaceCell.Row
+                };
+            }
+            return null;
+        }
+
+        Cell GetCrossCenter(List<Cell> match)
+        {
+            return match.Find(item => item.IsCenter);
+        }
+
+        bool IsVertical(List<Cell> match)
+        {
+            return (match.First().Row == match.Last().Row);
+        }
+
+
+        void Consolidate(List<List<Cell>> matches)
+        {
+            bool intersectionFound;
+            do
+            {
+                intersectionFound = false;
+                for (var i = 0; i < matches.Count() - 1; i++)
+                {
+                    for (var j = i + 1; j < matches.Count(); j++)
+                    {
+                        var intersection = matches[i].Intersect(matches[j]);
+                        if (intersection.Any())
+                        {
+                            intersection.ToList().ForEach(item => item.IsCenter = true);
+
+                            matches[i].AddRange(matches[j]);
+                            intersectionFound = true;
+                            break;
+                        }
+                    }
+                    if (intersectionFound)
+                    {
+                        break;
+                    }
+                }
+            } while (intersectionFound);
+        }
+
+
+        public void Touch(int col, int row)
+        {
+            Touch(Grid[col, row]);
+        }
+
+        public void Touch(Cell cell)
+        {
+            
+            FirstTouched = LastTouched;
+            LastTouched = cell;
+            if (FirstTouched != null)
+            {
+                if (AreNeighbors(FirstTouched, LastTouched))
+                {
+                    Swap(FirstTouched, LastTouched);
+                }
+                else
+                {
+                    FirstTouched = null;
+                    LastTouched = null;
                 }
             }
+            TouchedChanged.Invoke(null, new EventArgs());
+        }
+
+
+        bool AreNeighbors(Cell firstTouched, Cell lastTouched)
+        {
+            foreach (var neighbor in NeighborsPattern)
+            {
+                var cell = GetShiftedCell(firstTouched.Col, firstTouched.Row, neighbor);
+                if (cell != null && cell.Col == lastTouched.Col && cell.Row == lastTouched.Row)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+
+        void Swap(Cell firstTouched, Cell lastTouched)
+        {
+            Grid[firstTouched.Col, firstTouched.Row] = lastTouched;
+            Grid[lastTouched.Col, lastTouched.Row] = firstTouched;
+
+            var tmpCol = lastTouched.Col;
+            var tmpRow = lastTouched.Row;
+
+            lastTouched.Col = firstTouched.Col;
+            lastTouched.Row = firstTouched.Row;
+
+            firstTouched.Col = tmpCol;
+            firstTouched.Row = tmpRow;
         }
     }
 }

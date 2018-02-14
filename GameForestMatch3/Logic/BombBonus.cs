@@ -30,5 +30,14 @@ namespace GameForestMatch3.Logic
             }
             return cellsToDelete;
         }
+
+
+        public override int Points
+        {
+            get
+            {
+                return 300;
+            }
+        }
     }
 }

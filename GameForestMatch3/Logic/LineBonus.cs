@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace GameForestMatch3.Logic
 {
-    public abstract class LineBonus : BonusCell
+    public class LineBonus : BonusCell
     {
         public bool IsVertical { get; set; }
 
@@ -15,6 +15,14 @@ namespace GameForestMatch3.Logic
                 cellsToDelete.Add(IsVertical ? grid[Col, dim] : grid[dim, Row]);
             }
             return cellsToDelete;
+        }
+
+        public override int Points
+        {
+            get
+            {
+                return 200;
+            }
         }
 
     }

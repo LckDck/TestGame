@@ -1,0 +1,36 @@
+﻿<Properties StartupConfiguration="{2F7FBEC8-4649-4808-98FE-17F48F26611D}|Default">
+  <MonoDevelop.Ide.Workbench ActiveDocument="GameForestMatch3/Views/MainLayer.cs">
+    <Files>
+      <File FileName="GameForestMatch3/MainActivity.cs" Line="18" Column="29" />
+      <File FileName="GameForestMatch3/CocosApplicationDelegate.cs" Line="18" Column="44" />
+      <File FileName="GameForestMatch3/Views/MainLayer.cs" Line="92" Column="5" />
+      <File FileName="GameForestMatch3/Logic/Field.cs" Line="465" Column="49" />
+      <File FileName="GameForestMatch3/Views/Elements/CellSprite.cs" Line="13" Column="13" />
+    </Files>
+    <Pads>
+      <Pad Id="ProjectPad">
+        <State name="__root__">
+          <Node name="GameForestMatch3" expanded="True">
+            <Node name="GameForestMatch3" expanded="True">
+              <Node name="Logic" expanded="True" />
+              <Node name="Properties" expanded="True" />
+              <Node name="Views" expanded="True">
+                <Node name="Elements" expanded="True" />
+                <Node name="MainLayer.cs" selected="True" />
+              </Node>
+            </Node>
+          </Node>
+        </State>
+      </Pad>
+    </Pads>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore>
+      <Breakpoint file="/Users/oxanagrishchenko/Projects/GameForestMatch3/GameForestMatch3/CocosDelegate.cs" relfile="GameForestMatch3/CocosDelegate.cs" line="29" column="1" />
+    </BreakpointStore>
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MonoDevelop.Ide.ItemProperties.GameForestMatch3 PreferredExecutionTarget="Android.Android_Accelerated_x86" />
+  <MultiItemStartupConfigurations />
+</Properties>
