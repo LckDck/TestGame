@@ -73,6 +73,7 @@
     <Compile Include="Views\MenuLayer.cs" />
     <Compile Include="Views\Elements\Button.cs" />
     <Compile Include="Views\Elements\CellSprite.cs" />
+    <Compile Include="Views\Elements\GemSprite.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\AboutResources.txt" />

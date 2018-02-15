@@ -51,7 +51,7 @@ namespace GameForestMatch3.Logic
               new int[] { 0, 1 }
         };
 
-        public Cell[,] Grid;
+        Cell[,] Grid;
 
         Random Rnd = new Random();
 
@@ -404,8 +404,6 @@ namespace GameForestMatch3.Logic
 
         CellType GenerateType(List<CellType> except = null)
         {
-
-
             if (except == null) except = new List<CellType>();
 
             // Can not except more types than total amount of types
@@ -445,10 +443,9 @@ namespace GameForestMatch3.Logic
             //CheckAndFixGrid();
         }
 
-
         void MoveDown(int removedCol, int removedRow)
         {
-            var cellsToMove = new List<Cell>();
+            var cellsToMove = new List<Tuple<int, int>>();
             // Since Cocos2d has Y axe on the bottom of the screen, we have upside down field,
             // so cells fall upwards :/
             for (var row = removedRow + 1; row < SIZE; row++)
@@ -458,12 +455,11 @@ namespace GameForestMatch3.Logic
                     Grid[removedCol, row].Row--;
                     Grid[removedCol, row - 1] = Grid[removedCol, row];
                     Grid[removedCol, row] = null;
-                    cellsToMove.Add(Grid[removedCol, row]);
                 }
             }
-
-            MovedDown.Invoke(null, cellsToMove);
         }
+
+        public event EventHandler NoMoreMatches;
 
         public void DestroyMatches()
         {
@@ -472,14 +468,21 @@ namespace GameForestMatch3.Logic
             if (!matches.Any())
             {
                 ResetSelected();
+                NoMoreMatches.Invoke(null, new EventArgs());
                 TouchedChanged.Invoke(null, new EventArgs());
                 return;
             }
 
             Consolidate(matches);
-
             for (var i = 0; i < matches.Count(); i++)
             {
+                var toDelete = new List<Tuple<int, int>>();
+                foreach (var cell in matches[i])
+                {
+                    toDelete.Add(new Tuple<int, int>(cell.Col, cell.Row));
+                }
+
+                var deleteIndex = 0;
                 foreach (var cell in matches[i])
                 {
                     var col = cell.Col;
@@ -488,23 +491,30 @@ namespace GameForestMatch3.Logic
                     Points += cell.Points;
                     Cell bonusCell = null;//GetBonusCell(cell, matches[i], LastTouched);
 
-                    CellDeleted.Invoke(null, cell);
-                    // TODO check if add on the fly works correctly
-                    if (cell is BonusCell)
-                    {
-                        var toDestroy = ((BonusCell)cell).Action(Grid);
-                        matches.Add(toDestroy);
-                    }
 
-                    Grid[col, row] = bonusCell;
+
+                    // TODO check if add on the fly works correctly
+                    //if (cell is BonusCell)
+                    //{
+                    //    var toDestroy = ((BonusCell)cell).Action(Grid);
+                    //    matches.Add(toDestroy);
+                    //}
+
+                    //Grid[col, row] = bonusCell;
+
+                    Grid[col, row] = null;
+                    CellDeleted.Invoke(null, new Tuple<int, int>(col, row));
                     MoveDown(col, row);
-                    // TODO destroy matches
+                    MovedDown.Invoke(null, new EventArgs());
                 }
+
+
             }
         }
 
-        public event EventHandler<Cell> CellDeleted;
-        public event EventHandler<List<Cell>> MovedDown;
+
+        public event EventHandler<Tuple<int,int>> CellDeleted;
+        public event EventHandler MovedDown;
         public event EventHandler<Cell> CellCreated;
 
         BonusCell GetBonusCell(Cell cell, List<Cell> match, Cell lastTouched)
@@ -592,7 +602,6 @@ namespace GameForestMatch3.Logic
 
         public void Touch(Cell cell)
         {
-            
             FirstTouched = LastTouched;
             LastTouched = cell;
             if (FirstTouched != null)
@@ -600,11 +609,20 @@ namespace GameForestMatch3.Logic
                 if (AreNeighbors(FirstTouched, LastTouched))
                 {
                     Swap(FirstTouched, LastTouched);
+                    var matches = GetMatches();
+                    if (!matches.Any()) 
+                    {
+                        Swap(FirstTouched, LastTouched);
+                        ResetSelected();
+                    }
                 }
-                else
+                else if (FirstTouched != LastTouched)
                 {
                     FirstTouched = null;
-                    LastTouched = null;
+                    LastTouched = cell;
+                }
+                else {
+                    ResetSelected();
                 }
             }
             TouchedChanged.Invoke(null, new EventArgs());
@@ -627,17 +645,25 @@ namespace GameForestMatch3.Logic
 
         void Swap(Cell firstTouched, Cell lastTouched)
         {
-            Grid[firstTouched.Col, firstTouched.Row] = lastTouched;
-            Grid[lastTouched.Col, lastTouched.Row] = firstTouched;
 
-            var tmpCol = lastTouched.Col;
-            var tmpRow = lastTouched.Row;
+            var fCol = firstTouched.Col;
+            var fRow = firstTouched.Row;
+            var lCol = lastTouched.Col;
+            var lRow = lastTouched.Row;
 
-            lastTouched.Col = firstTouched.Col;
-            lastTouched.Row = firstTouched.Row;
+            Grid[fCol, fRow] = lastTouched;
+            Grid[lCol, lRow] = firstTouched;
 
-            firstTouched.Col = tmpCol;
-            firstTouched.Row = tmpRow;
+            lastTouched.Col = fCol;
+            lastTouched.Row = fRow;
+
+            firstTouched.Col = lCol;
+            firstTouched.Row = lRow;
+        }
+
+
+        public Cell GetCell(int col, int row) {
+            return Grid[col, row];
         }
     }
 }

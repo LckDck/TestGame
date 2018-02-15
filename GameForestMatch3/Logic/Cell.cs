@@ -16,5 +16,12 @@ namespace GameForestMatch3.Logic
                 return 100;
             }
         }
+
+        //public bool IsDeleted { get; set; }
+
+        //public void Dispose()
+        //{
+        //    IsDeleted = true;
+        //}
     }
 }

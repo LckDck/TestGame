@@ -10,7 +10,7 @@ namespace GameForestMatch3.Views.Elements
 
         public CellSprite(CCTexture2D texture = null, CCRect? texRectInPixels = null, bool rotated = false) : base (texture, texRectInPixels, rotated)
         {
-            Opacity = 100;
+            
         }
     }
 }
