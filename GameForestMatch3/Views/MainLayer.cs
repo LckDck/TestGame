@@ -170,10 +170,10 @@ namespace GameForestMatch3.Views
             var delayAction = new CCDelayTime(CellAnimationDuration + 0.1f);
             var delayCompletedAction = new CCCallFunc(() =>
             {
-                ClearBackgroundColor();
-                GameCore.ResetSelected();
-                GameCore.DestroyMatches();
                 DestroyTimerStarted = false;
+                ClearBackgroundColor();
+                GameCore.DestroyMatches();
+
             });
             CCSequence sequence = new CCSequence(delayAction, delayCompletedAction);
             RunAction(sequence);
@@ -278,15 +278,15 @@ namespace GameForestMatch3.Views
         {
             switch (type)
             {
-                case CellType.BlueRomb:
+                case CellType.Blue:
                     return CCColor3B.Blue;
-                case CellType.YellowSquare:
+                case CellType.Yellow:
                     return CCColor3B.Yellow;
-                case CellType.RedCircle:
+                case CellType.Red:
                     return CCColor3B.Red;
-                case CellType.PurpleBackTriangle:
+                case CellType.Purple:
                     return CCColor3B.Magenta;
-                case CellType.GreenTriangle:
+                case CellType.Green:
                     return CCColor3B.Green;
                 default:
                     return CCColor3B.DarkGray;

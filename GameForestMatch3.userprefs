@@ -1,14 +1,15 @@
 ﻿<Properties StartupConfiguration="{2F7FBEC8-4649-4808-98FE-17F48F26611D}|Default">
-  <MonoDevelop.Ide.Workbench ActiveDocument="GameForestMatch3/Views/MainLayer.cs">
+  <MonoDevelop.Ide.Workbench ActiveDocument="GameForestMatch3/Logic/CellType.cs">
     <Files>
-      <File FileName="GameForestMatch3/Views/MainLayer.cs" Line="365" Column="62" />
-      <File FileName="GameForestMatch3/Logic/Field.cs" Line="139" Column="26" />
+      <File FileName="GameForestMatch3/Views/MainLayer.cs" Line="323" Column="10" />
+      <File FileName="GameForestMatch3/Logic/Field.cs" Line="624" Column="40" />
       <File FileName="GameForestMatch3/Views/Elements/CellSprite.cs" Line="13" Column="13" />
       <File FileName="GameForestMatch3/Views/Elements/GemSprite.cs" Line="15" Column="6" />
-      <File FileName="GameForestMatch3/Logic/Cell.cs" Line="14" Column="17" />
+      <File FileName="GameForestMatch3/Logic/Cell.cs" Line="18" Column="10" />
+      <File FileName="GameForestMatch3/Logic/CellType.cs" Line="6" Column="18" />
     </Files>
   </MonoDevelop.Ide.Workbench>
-  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Release" />
   <MonoDevelop.Ide.DebuggingService.Breakpoints>
     <BreakpointStore />
   </MonoDevelop.Ide.DebuggingService.Breakpoints>

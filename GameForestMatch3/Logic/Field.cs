@@ -467,8 +467,13 @@ namespace GameForestMatch3.Logic
 
             if (!matches.Any())
             {
-                ResetSelected();
+                if (FirstTouched != null && LastTouched != null)
+                {
+                    Swap(FirstTouched, LastTouched);
+                }
+
                 NoMoreMatches.Invoke(null, new EventArgs());
+                ResetSelected();
                 TouchedChanged.Invoke(null, new EventArgs());
                 return;
             }
@@ -476,13 +481,6 @@ namespace GameForestMatch3.Logic
             Consolidate(matches);
             for (var i = 0; i < matches.Count(); i++)
             {
-                var toDelete = new List<Tuple<int, int>>();
-                foreach (var cell in matches[i])
-                {
-                    toDelete.Add(new Tuple<int, int>(cell.Col, cell.Row));
-                }
-
-                var deleteIndex = 0;
                 foreach (var cell in matches[i])
                 {
                     var col = cell.Col;
@@ -510,6 +508,7 @@ namespace GameForestMatch3.Logic
 
 
             }
+            ResetSelected();
         }
 
 
@@ -610,13 +609,6 @@ namespace GameForestMatch3.Logic
                 if (AreNeighbors(FirstTouched, LastTouched))
                 {
                     Swap(FirstTouched, LastTouched);
-                    var matches = GetMatches();
-                    if (!matches.Any()) 
-                    {
-                        Swap(FirstTouched, LastTouched);
-                        FirstTouched = null;
-                        LastTouched = cell;
-                    }
                 }
                 else if (FirstTouched != LastTouched)
                 {
