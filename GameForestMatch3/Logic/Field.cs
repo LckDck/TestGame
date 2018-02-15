@@ -582,6 +582,7 @@ namespace GameForestMatch3.Logic
                             intersection.ToList().ForEach(item => item.IsCenter = true);
 
                             matches[i].AddRange(matches[j]);
+                            matches.Remove(matches[j]);
                             intersectionFound = true;
                             break;
                         }
