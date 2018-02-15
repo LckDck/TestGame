@@ -614,7 +614,8 @@ namespace GameForestMatch3.Logic
                     if (!matches.Any()) 
                     {
                         Swap(FirstTouched, LastTouched);
-                        ResetSelected();
+                        FirstTouched = null;
+                        LastTouched = cell;
                     }
                 }
                 else if (FirstTouched != LastTouched)

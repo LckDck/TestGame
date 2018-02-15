@@ -148,8 +148,6 @@ namespace GameForestMatch3.Views
                 var newPlace = places[gem.Cell.Col, gem.Cell.Row];
                 var target = new CCPoint(newPlace.PositionX, newPlace.PositionY);
 
-                System.Diagnostics.Debug.WriteLine($"Moved {col} {row} --> {gem.Cell.Col} {gem.Cell.Row}");
-
                 gem.Col = gem.Cell.Col;
                 gem.Row = gem.Cell.Row;
 
