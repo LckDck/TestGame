@@ -6,32 +6,40 @@ namespace GameForestMatch3.Views
 {
     public class MenuLayer : CCLayerColor
     {
+        Button StartButton;
         protected override void AddedToScene()
         {
             base.AddedToScene();
 
             Scene.SceneResolutionPolicy = CCSceneResolutionPolicy.ShowAll;
 
-            var button = new Button("START")
+            StartButton = new Button("START")
             {
                 Position = VisibleBoundsWorldspace.Center,
             };
 
-            button.Triggered += (sender, e) =>
-            {
-                Window.DefaultDirector.ReplaceScene(MainLayer.GameLayerScene(Window));
-            };
+            StartButton.Triggered += StartClicked;
 
-            AddChild(button);
+            AddChild(StartButton);
+        }
+
+        void StartClicked(object sender, EventArgs e)
+        {
+            Window.DefaultDirector.ReplaceScene(MainLayer.GameLayerScene(Window));
+        }
+
+        public override void Cleanup()
+        {
+            base.Cleanup();
+            StartButton.Triggered -= StartClicked;
+            RemoveAllChildren(true);
         }
 
         public static CCScene GameStartLayerScene(CCWindow mainWindow)
         {
             var scene = new CCScene(mainWindow);
             var layer = new MenuLayer();
-
             scene.AddChild(layer);
-
             return scene;
         }
     }

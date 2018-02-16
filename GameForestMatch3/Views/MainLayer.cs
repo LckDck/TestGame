@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using CocosSharp;
 using GameForestMatch3.Logic;
 using GameForestMatch3.Views.Elements;
@@ -9,12 +10,16 @@ namespace GameForestMatch3.Views
 {
     public class MainLayer : CCLayerColor
     {
-        float CellAnimationDuration = 0.5f;
+        readonly float CellAnimationDuration = 0.5f;
+        readonly float CellAppearingDuration = 0.1f;
+        readonly int GameDurationInSeconds = 60;
+
         CellSprite[,] places;
         List<GemSprite> gems;
         Field GameCore;
 
         bool IsMoving;
+
         protected override void AddedToScene()
         {
             base.AddedToScene();
@@ -26,12 +31,35 @@ namespace GameForestMatch3.Views
             GameCore.CellCreated += OnCellCreated;
             GameCore.NoMoreMatches += OnNoMoreMatches;
             GameCore.PointsChanged += OnScoreChanged;
+            GameCore.BonusCreated += OnBonusCreated;
+
+            var touchListener = new CCEventListenerTouchOneByOne();
+            touchListener.OnTouchBegan = TouchBegan;
+            AddEventListener(touchListener, this);
 
             Scene.SceneResolutionPolicy = CCSceneResolutionPolicy.ShowAll;
             places = new CellSprite[Field.SIZE, Field.SIZE];
             gems = new List<GemSprite>();
+
             CreateField();
             AddScoreLabel();
+            AddTimerLabel();
+            InitTimer();
+        }
+
+
+        public override void Cleanup()
+        {
+            base.Cleanup();
+            GameCore.TouchedChanged -= OnTouched;
+            GameCore.CellDeleted -= OnCellDeleted;
+            GameCore.MovedDown -= OnMovedDown;
+            GameCore.CellCreated -= OnCellCreated;
+            GameCore.NoMoreMatches -= OnNoMoreMatches;
+            GameCore.PointsChanged -= OnScoreChanged;
+            GameCore.BonusCreated -= OnBonusCreated;
+            RemoveAllListeners();
+            RemoveAllChildren(true);
         }
 
 
@@ -53,12 +81,18 @@ namespace GameForestMatch3.Views
         void OnNoMoreMatches(object sender, EventArgs e)
         {
             IsMoving = false;
+            if (TimeIsOut)
+            {
+                GameOver();
+            }
         }
 
 
         void OnCellCreated(object sender, Cell cell)
         {
             var gem = CreateGem(cell.Type, cell.Col, cell.Row);
+            gem.Scale = 0.5f;
+            gem.AddAction (new CCScaleTo(CellAppearingDuration, 1));
             AddChild(gem);
         }
 
@@ -69,11 +103,20 @@ namespace GameForestMatch3.Views
             {
                 MoveGem(gem);
             }
-
+            // If there is empty places on field - initiate creation process
             if (gems.Count() < Field.SIZE * Field.SIZE)
             {
                 StartCreationTimer();
             }
+        }
+
+
+        void OnBonusCreated(object sender, BonusCell cell)
+        {
+            var gem = CreateGem(cell.Type, cell.Col, cell.Row, cell.BonusType);
+            gem.Scale = 0.5f;
+            gem.AddAction(new CCScaleTo(CellAppearingDuration, 1));
+            AddChild(gem);
         }
 
 
@@ -99,9 +142,12 @@ namespace GameForestMatch3.Views
             }
             IsMoving = true;
 
+            // Clear cell selection 
             ClearBackgroundColor();
             int col;
             int row;
+
+            // Select last touched gem
             if (GameCore.LastTouched != null)
             {
                 col = GameCore.LastTouched.Col;
@@ -109,6 +155,7 @@ namespace GameForestMatch3.Views
                 places[col, row].Color = CCColor3B.DarkGray;
             }
 
+            // Select previously touched gem
             if (GameCore.FirstTouched != null)
             {
                 col = GameCore.FirstTouched.Col;
@@ -116,6 +163,7 @@ namespace GameForestMatch3.Views
                 places[col, row].Color = CCColor3B.DarkGray;
             }
 
+            // Trying to move gem to the position corresponding its col and row
             var changeFound = false;
             foreach (var gem in gems)
             {
@@ -126,6 +174,7 @@ namespace GameForestMatch3.Views
                 }
             }
 
+            // If there was a move, initiate destroy process
             if (changeFound)
             {
                 StartDestroyTimer();
@@ -142,9 +191,11 @@ namespace GameForestMatch3.Views
             if (gem == null) return false;
             var col = gem.Col;
             var row = gem.Row;
+
+            // Check if gem place corresponds its cell place
+            // if not - it should move
             if (gem.Cell.Col != gem.Col || gem.Cell.Row != gem.Row)
             {
-                gem.StopAllActions();
                 var newPlace = places[gem.Cell.Col, gem.Cell.Row];
                 var target = new CCPoint(newPlace.PositionX, newPlace.PositionY);
 
@@ -184,7 +235,6 @@ namespace GameForestMatch3.Views
         void StartCreationTimer()
         {
             if (FillTimerStarted) return;
-
             FillTimerStarted = true;
 
             var delayAction = new CCDelayTime(CellAnimationDuration + 0.1f);
@@ -229,34 +279,46 @@ namespace GameForestMatch3.Views
                 {
                     var back = CreateBack(oneSize, i, j, offsetX, offsetY, distance);
                     AddChild(back);
-                    CreateGem(GameCore.GetCell(i, j).Type, i, j);
+
                 }
             }
 
-            foreach (var gem in gems)
+            for (var i = 0; i < Field.SIZE; i++)
             {
-                AddChild(gem);
+                for (var j = 0; j < Field.SIZE; j++)
+                {
+                    var gem = CreateGem(GameCore.GetCell(i, j).Type, i, j);
+                    AddChild(gem);
+                }
             }
-
-            var touchListener = new CCEventListenerTouchOneByOne();
-            touchListener.OnTouchBegan = TouchBegan;
-            AddEventListener(touchListener, this);
         }
 
 
         CellSprite CreateBack(float oneWidth, int i, int j, float offsetX, float offsetY, int distance)
         {
+            // Cocos Y axe starts on the bottom
+            var row = Field.SIZE - 1 - j;
             var back = new CellSprite(new CCTexture2D(), new CCRect(0, 0, oneWidth, oneWidth))
             {
                 Color = CCColor3B.Gray,
                 PositionX = offsetX + i * (oneWidth + distance) + oneWidth / 2,
-                PositionY = offsetY + j * (oneWidth + distance) + oneWidth / 2,
+                PositionY = offsetY + row * (oneWidth + distance) + oneWidth / 2,
                 Col = i,
                 Row = j,
             };
             places[i, j] = back;
             return back;
         }
+
+
+        GemSprite CreateGem(CellType type, int col, int row, BonusType bonusType)
+        {
+            var gem = CreateGem(type, col, row);
+            var bonusView = GetBonusView(bonusType, GemSize / 2, GemSize / 2);
+            gem.AddChild(bonusView);
+            return gem;
+        }
+
 
         GemSprite CreateGem(CellType type, int col, int row)
         {
@@ -274,7 +336,33 @@ namespace GameForestMatch3.Views
         }
 
 
-        private CCColor3B GetColor(CellType type)
+        CCSprite GetBonusView(BonusType bonusType, int positionX, int positionY)
+        {
+            CCRect frame = new CCRect(0, 0, GemSize - 30, GemSize - 30);
+            switch (bonusType)
+            {
+                case BonusType.LineHorizontal:
+                    frame = new CCRect(0, 0, GemSize - 20, GemSize - 60);
+                    break;
+                case BonusType.LineVertical:
+                    frame = new CCRect(0, 0, GemSize - 60, GemSize - 20);
+                    break;
+                case BonusType.Bomb:
+                    break;
+            }
+
+            var view = new CCSprite(new CCTexture2D(), frame)
+            {
+                Opacity = 200,
+                PositionX = positionX,
+                PositionY = positionY,
+                Color = CCColor3B.White
+            };
+            return view;
+        }
+
+
+        CCColor3B GetColor(CellType type)
         {
             switch (type)
             {
@@ -320,6 +408,52 @@ namespace GameForestMatch3.Views
                 PositionY = VisibleBoundsWorldspace.UpperRight.Y - 50
             };
             AddChild(ScoreLabel);
+        }
+
+
+        CCLabelTtf TimerLabel;
+        void AddTimerLabel()
+        {
+            TimerLabel = new CCLabelTtf($"01:00", "arial", 22)
+            {
+                Color = CCColor3B.Orange,
+                HorizontalAlignment = CCTextAlignment.Center,
+                VerticalAlignment = CCVerticalTextAlignment.Center,
+                AnchorPoint = CCPoint.AnchorMiddle,
+                PositionX = VisibleBoundsWorldspace.Center.X,
+                PositionY = VisibleBoundsWorldspace.UpperRight.Y - 100
+            };
+            AddChild(TimerLabel);
+        }
+
+        void InitTimer()
+        {
+            Schedule(OnTimer, 1, 60, 2);
+        }
+
+        bool TimeIsOut;
+        int seconds;
+        void OnTimer(float obj)
+        {
+            seconds++;
+            if (seconds > GameDurationInSeconds)
+            {
+                seconds = GameDurationInSeconds;
+                if (!IsMoving)
+                {
+                    GameOver();
+                }
+                TimeIsOut = true;
+                return;
+            }
+            var rest = 60 - seconds;
+            var secondsString = rest > 9 ? rest.ToString() : "0" + rest;
+            TimerLabel.Text = $"00:{secondsString}";
+        }
+
+        void GameOver()
+        {
+            Window.DefaultDirector.ReplaceScene(GameOverLayer.GameOverLayerScene(Window, GameCore.Points));
         }
     }
 }

@@ -74,6 +74,8 @@
     <Compile Include="Views\Elements\Button.cs" />
     <Compile Include="Views\Elements\CellSprite.cs" />
     <Compile Include="Views\Elements\GemSprite.cs" />
+    <Compile Include="Logic\BonusType.cs" />
+    <Compile Include="Views\GameOverLayer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\AboutResources.txt" />
@@ -97,7 +99,7 @@
     <Folder Include="Views\Elements\" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\Content\fonts\arial-22.xnb" />
+    <AndroidAsset Include="Assets\Content\fonts\arial.xnb" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\Android\Xamarin.Android.CSharp.targets" />
   <ItemGroup>

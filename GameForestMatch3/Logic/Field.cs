@@ -69,15 +69,17 @@ namespace GameForestMatch3.Logic
             }
         }
 
-        public event EventHandler PointsChanged;
-
-
 
         public Cell LastTouched { get; set; }
         public Cell FirstTouched { get; set; }
 
         public event EventHandler TouchedChanged;
-
+        public event EventHandler<Tuple<int, int>> CellDeleted;
+        public event EventHandler MovedDown;
+        public event EventHandler<Cell> CellCreated;
+        public event EventHandler PointsChanged;
+        public event EventHandler NoMoreMatches;
+        public event EventHandler<BonusCell> BonusCreated;
 
 
         readonly List<CellType> TypeList = Enum.GetValues(typeof(CellType)).OfType<CellType>().ToList();
@@ -88,11 +90,13 @@ namespace GameForestMatch3.Logic
             return col >= 0 && col < SIZE && row >= 0 && row < SIZE;
         }
 
+
         public void ResetSelected()
         {
             FirstTouched = null;
             LastTouched = null;
         }
+
 
         public Field()
         {
@@ -343,7 +347,7 @@ namespace GameForestMatch3.Logic
                     if (match.Count > 2)
                     {
                         matchList.Add(match);
-                        //skip other gems in this match
+                        //skip other cells in this match
                         col += match.Count - 1;
                     }
                 }
@@ -438,28 +442,22 @@ namespace GameForestMatch3.Logic
                     };
                 }
             }
-
-            // TODO вернуть когда надо
-            //CheckAndFixGrid();
         }
 
         void MoveDown(int removedCol, int removedRow)
         {
             var cellsToMove = new List<Tuple<int, int>>();
-            // Since Cocos2d has Y axe on the bottom of the screen, we have upside down field,
-            // so cells fall upwards :/
-            for (var row = removedRow + 1; row < SIZE; row++)
+            for (var row = removedRow - 1; row >= 0; row--)
             {
                 if (Grid[removedCol, row] != null)
                 {
-                    Grid[removedCol, row].Row--;
-                    Grid[removedCol, row - 1] = Grid[removedCol, row];
+                    Grid[removedCol, row].Row++;
+                    Grid[removedCol, row + 1] = Grid[removedCol, row];
                     Grid[removedCol, row] = null;
                 }
             }
         }
 
-        public event EventHandler NoMoreMatches;
 
         public void DestroyMatches()
         {
@@ -467,28 +465,45 @@ namespace GameForestMatch3.Logic
 
             if (!matches.Any())
             {
+                // Check if there is two selected cells 
+                // it means that there was an unsuccessful swap, so swap back
                 if (FirstTouched != null && LastTouched != null)
                 {
                     Swap(FirstTouched, LastTouched);
                 }
-
+                // Invoke that there is no more matches on the field
                 NoMoreMatches.Invoke(null, new EventArgs());
+
+                //Remove cells selection
                 ResetSelected();
                 TouchedChanged.Invoke(null, new EventArgs());
                 return;
             }
 
+            // Consolidate intersected matches into the big one
             Consolidate(matches);
+
             for (var i = 0; i < matches.Count(); i++)
             {
+                // Trying to get bonus cells for this match.
+                // There can be more then one bonus for each match, cause bomb appears on 
+                // every intersection of vertical and horizontal match of the same color.
+                var bonusCellsPlaces = GetBonusPlaceCells(matches[i], LastTouched, FirstTouched);
+                var bonusCells = GetBonusCells(matches[i].First().Type, matches[i], bonusCellsPlaces);
+                foreach (var bonus in bonusCells)
+                {
+                    CellDeleted.Invoke(null, new Tuple<int, int>(bonus.Col, bonus.Row));
+                    Grid[bonus.Col, bonus.Row] = bonus;
+                    BonusCreated(null, bonus);
+                }
+
+
                 foreach (var cell in matches[i])
                 {
                     var col = cell.Col;
                     var row = cell.Row;
 
                     Points += cell.Points;
-                    Cell bonusCell = null;//GetBonusCell(cell, matches[i], LastTouched);
-
 
 
                     // TODO check if add on the fly works correctly
@@ -500,68 +515,123 @@ namespace GameForestMatch3.Logic
 
                     //Grid[col, row] = bonusCell;
 
-                    Grid[col, row] = null;
-                    CellDeleted.Invoke(null, new Tuple<int, int>(col, row));
-                    MoveDown(col, row);
-                    MovedDown.Invoke(null, new EventArgs());
+                    // New bonuses should not be deleted
+                    var isNewBonus = (Grid[col, row] is BonusCell) && (Grid[col, row] as BonusCell).IsNew;
+
+                    if (!isNewBonus)
+                    {
+                        Grid[col, row] = null;
+                        CellDeleted.Invoke(null, new Tuple<int, int>(col, row));
+                        // Move all cells above downwards
+                        MoveDown(col, row);
+                        MovedDown.Invoke(null, new EventArgs());
+                    }
                 }
-
-
             }
+
+            // Now all bonuses are old
+            ResetNewBonuses ();
+
+            // And nothing is selected
             ResetSelected();
         }
 
 
-        public event EventHandler<Tuple<int,int>> CellDeleted;
-        public event EventHandler MovedDown;
-        public event EventHandler<Cell> CellCreated;
-
-        BonusCell GetBonusCell(Cell cell, List<Cell> match, Cell lastTouched)
+        void ResetNewBonuses()
         {
-            if (match.Count() < 4)
-            {
-                return null;
+            foreach (var cell in Grid) {
+                if (cell is BonusCell) {
+                    (cell as BonusCell).IsNew = false;
+                }
+            }
+        }
+
+
+        List<Cell> GetBonusPlaceCells(List<Cell> match, Cell lastTouched, Cell firstTouched)
+        {
+            var result = new List<Cell>();
+            if (match.Count() < 4) {
+                return result;
             }
 
-            if (match.Count() == 4)
-            {
-                // Bonus appears on the last_touched_place 
-                // or in any place if the match is appeared after appearing new cells
-                var bonusPlaceCell = lastTouched ?? match.First();
-                return new LineBonus
+            if (match.Count() > 4) {
+                var centers = GetCrossCenters(match);
+                if (centers.Any())
                 {
-                    IsVertical = IsVertical(match),
-                    Type = cell.Type,
-                    Col = bonusPlaceCell.Col,
-                    Row = bonusPlaceCell.Row
-                };
+                    return centers;
+                }
             }
 
+            var cell = CheckLastAndFirstTouched(match, lastTouched, firstTouched);
+            result.Add (cell ?? match.First());
+            return result;
+        }
 
-            if (match.Count() > 4)
+
+        Cell CheckLastAndFirstTouched(List<Cell> match, Cell lastTouched, Cell firstTouched)
+        {
+            foreach (var cell in match)
             {
-                var crossCenter = GetCrossCenter(match);
-                // Bonus appears on the cross center, or last_touched_place, 
-                // or in any place if the match is appeared after appearing new cells
-                var bonusPlaceCell = crossCenter ?? lastTouched ?? match.First();
-                return new BombBonus
+                if (lastTouched != null && cell.Col == lastTouched.Col && cell.Row == lastTouched.Row && lastTouched.Type == match.First().Type)
                 {
-                    Type = cell.Type,
-                    Col = bonusPlaceCell.Col,
-                    Row = bonusPlaceCell.Row
-                };
+                    return lastTouched;
+                }
+                if (firstTouched != null && cell.Col == firstTouched.Col && cell.Row == firstTouched.Row && lastTouched.Type == match.First().Type)
+                {
+                    return firstTouched;
+                }
             }
             return null;
         }
 
-        Cell GetCrossCenter(List<Cell> match)
+
+        List<BonusCell> GetBonusCells(CellType type, List<Cell> match, List<Cell> placeCells)
         {
-            return match.Find(item => item.IsCenter);
+            var result = new List<BonusCell>();
+            if (match.Count() < 4)
+            {
+                return result;
+            }
+
+            foreach (var placeCell in placeCells)
+            {
+                if (match.Count() == 4)
+                {
+                    var isVertical = IsVertical(match);
+                    result.Add( new LineBonus
+                    {
+                        BonusType = isVertical ? BonusType.LineVertical : BonusType.LineHorizontal,
+                        IsVertical = isVertical,
+                        Type = type,
+                        Col = placeCell.Col,
+                        Row = placeCell.Row,
+                        IsNew = true
+                    });
+                }
+
+                if (match.Count() > 4)
+                {
+                    result.Add (new BombBonus
+                    {
+                        BonusType = BonusType.Bomb,
+                        Type = type,
+                        Col = placeCell.Col,
+                        Row = placeCell.Row,
+                        IsNew = true
+                    });
+                }
+            }
+            return result;
+        }
+
+        List<Cell> GetCrossCenters(List<Cell> match)
+        {
+            return match.Where(item => item.IsCenter).ToList();
         }
 
         bool IsVertical(List<Cell> match)
         {
-            return (match.First().Row == match.Last().Row);
+            return (match.First().Col == match.Last().Col);
         }
 
 
@@ -600,16 +670,22 @@ namespace GameForestMatch3.Logic
             Touch(Grid[col, row]);
         }
 
+
         public void Touch(Cell cell)
         {
             FirstTouched = LastTouched;
             LastTouched = cell;
+
+            // If there is another cell touched
             if (FirstTouched != null)
             {
+                // Check if two cells are neighbours
                 if (AreNeighbors(FirstTouched, LastTouched))
                 {
                     Swap(FirstTouched, LastTouched);
                 }
+                // If they are different cells and not neighbors -
+                // just select the last one
                 else if (FirstTouched != LastTouched)
                 {
                     FirstTouched = null;
@@ -639,7 +715,6 @@ namespace GameForestMatch3.Logic
 
         void Swap(Cell firstTouched, Cell lastTouched)
         {
-
             var fCol = firstTouched.Col;
             var fRow = firstTouched.Row;
             var lCol = lastTouched.Col;
