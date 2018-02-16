@@ -70,9 +70,6 @@ namespace GameForestMatch3.Logic
         }
 
 
-        public Cell LastTouched { get; set; }
-        public Cell FirstTouched { get; set; }
-
         public event EventHandler TouchedChanged;
         public event EventHandler<Tuple<int, int>> CellDeleted;
         public event EventHandler MovedDown;
@@ -83,6 +80,49 @@ namespace GameForestMatch3.Logic
 
 
         readonly List<CellType> TypeList = Enum.GetValues(typeof(CellType)).OfType<CellType>().ToList();
+
+        Cell lastTouched;
+        public Cell LastTouched
+        {
+            get
+            {
+                return lastTouched;
+            }
+            set
+            {
+                if (lastTouched != null && lastTouched != firstTouched)
+                {
+                    lastTouched.IsTouched = false;
+                }
+                if (value != null)
+                {
+                    value.IsTouched = true;
+                }
+                lastTouched = value;
+            }
+        }
+
+        Cell firstTouched;
+        public Cell FirstTouched
+        {
+            get
+            {
+                return firstTouched;
+            }
+            set
+            {
+                if (firstTouched != null && lastTouched != firstTouched)
+                {
+                    firstTouched.IsTouched = false;
+                }
+                if (value != null)
+                {
+                    value.IsTouched = true;
+                }
+                firstTouched = value;
+            }
+        }
+
 
 
         public static bool FitGrid(int col, int row)
@@ -438,7 +478,7 @@ namespace GameForestMatch3.Logic
                             Row = row
                         };
 
-                        CellCreated.Invoke(null, Grid[col,row]);
+                        CellCreated.Invoke(null, Grid[col, row]);
                     };
                 }
             }
@@ -530,7 +570,7 @@ namespace GameForestMatch3.Logic
             }
 
             // Now all bonuses are old
-            ResetNewBonuses ();
+            ResetNewBonuses();
 
             // And nothing is selected
             ResetSelected();
@@ -539,8 +579,10 @@ namespace GameForestMatch3.Logic
 
         void ResetNewBonuses()
         {
-            foreach (var cell in Grid) {
-                if (cell is BonusCell) {
+            foreach (var cell in Grid)
+            {
+                if (cell is BonusCell)
+                {
                     (cell as BonusCell).IsNew = false;
                 }
             }
@@ -550,11 +592,13 @@ namespace GameForestMatch3.Logic
         List<Cell> GetBonusPlaceCells(List<Cell> match, Cell lastTouched, Cell firstTouched)
         {
             var result = new List<Cell>();
-            if (match.Count() < 4) {
+            if (match.Count() < 4)
+            {
                 return result;
             }
 
-            if (match.Count() > 4) {
+            if (match.Count() > 4)
+            {
                 var centers = GetCrossCenters(match);
                 if (centers.Any())
                 {
@@ -562,23 +606,19 @@ namespace GameForestMatch3.Logic
                 }
             }
 
-            var cell = CheckLastAndFirstTouched(match, lastTouched, firstTouched);
-            result.Add (cell ?? match.First());
+            var cell = CheckLastAndFirstTouched(match);
+            result.Add(cell ?? match.First());
             return result;
         }
 
 
-        Cell CheckLastAndFirstTouched(List<Cell> match, Cell lastTouched, Cell firstTouched)
+        Cell CheckLastAndFirstTouched(List<Cell> match)
         {
             foreach (var cell in match)
             {
-                if (lastTouched != null && cell.Col == lastTouched.Col && cell.Row == lastTouched.Row && lastTouched.Type == match.First().Type)
-                {
-                    return lastTouched;
-                }
-                if (firstTouched != null && cell.Col == firstTouched.Col && cell.Row == firstTouched.Row && lastTouched.Type == match.First().Type)
-                {
-                    return firstTouched;
+                if (cell.IsTouched) {
+                    System.Diagnostics.Debug.WriteLine($"{cell.Col} {cell.Row}");
+                    return cell;
                 }
             }
             return null;
@@ -598,7 +638,7 @@ namespace GameForestMatch3.Logic
                 if (match.Count() == 4)
                 {
                     var isVertical = IsVertical(match);
-                    result.Add( new LineBonus
+                    result.Add(new LineBonus
                     {
                         BonusType = isVertical ? BonusType.LineVertical : BonusType.LineHorizontal,
                         IsVertical = isVertical,
@@ -611,7 +651,7 @@ namespace GameForestMatch3.Logic
 
                 if (match.Count() > 4)
                 {
-                    result.Add (new BombBonus
+                    result.Add(new BombBonus
                     {
                         BonusType = BonusType.Bomb,
                         Type = type,
@@ -691,7 +731,8 @@ namespace GameForestMatch3.Logic
                     FirstTouched = null;
                     LastTouched = cell;
                 }
-                else {
+                else
+                {
                     ResetSelected();
                 }
             }
@@ -731,7 +772,8 @@ namespace GameForestMatch3.Logic
         }
 
 
-        public Cell GetCell(int col, int row) {
+        public Cell GetCell(int col, int row)
+        {
             return Grid[col, row];
         }
     }

@@ -8,6 +8,7 @@ namespace GameForestMatch3.Logic
         public int Row { get; set; }
 
         public bool IsCenter { get; set; }
+        public bool IsTouched { get; set; }
 
         public virtual int Points 
         { 
