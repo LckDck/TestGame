@@ -77,49 +77,51 @@ namespace GameForestMatch3.Logic
         public event EventHandler PointsChanged;
         public event EventHandler NoMoreMatches;
         public event EventHandler<BonusCell> BonusCreated;
+        public event EventHandler Detonated;
+        public event EventHandler<Tuple<int, int>> DetonatedCell;
 
 
         readonly List<CellType> TypeList = Enum.GetValues(typeof(CellType)).OfType<CellType>().ToList();
 
-        Cell lastTouched;
+        Cell _lastTouched;
         public Cell LastTouched
         {
             get
             {
-                return lastTouched;
+                return _lastTouched;
             }
             set
             {
-                if (lastTouched != null && lastTouched != firstTouched)
+                if (_lastTouched != null && _lastTouched != _firstTouched)
                 {
-                    lastTouched.IsTouched = false;
+                    _lastTouched.IsTouched = false;
                 }
                 if (value != null)
                 {
                     value.IsTouched = true;
                 }
-                lastTouched = value;
+                _lastTouched = value;
             }
         }
 
-        Cell firstTouched;
+        Cell _firstTouched;
         public Cell FirstTouched
         {
             get
             {
-                return firstTouched;
+                return _firstTouched;
             }
             set
             {
-                if (firstTouched != null && lastTouched != firstTouched)
+                if (_firstTouched != null && _lastTouched != _firstTouched)
                 {
-                    firstTouched.IsTouched = false;
+                    _firstTouched.IsTouched = false;
                 }
                 if (value != null)
                 {
                     value.IsTouched = true;
                 }
-                firstTouched = value;
+                _firstTouched = value;
             }
         }
 
@@ -448,7 +450,7 @@ namespace GameForestMatch3.Logic
 
         CellType GenerateType(List<CellType> except = null)
         {
-            if (except == null) except = new List<CellType>();
+            if (except == null) except = new List<CellType>() { };
 
             // Can not except more types than total amount of types
             if (except.Distinct().Count() >= TypeList.Count())
@@ -505,6 +507,12 @@ namespace GameForestMatch3.Logic
 
             if (!matches.Any())
             {
+                if (HaveToDetonate())
+                {
+                    Detonated.Invoke(null, new EventArgs());
+                    return;
+                }
+
                 // Check if there is two selected cells 
                 // it means that there was an unsuccessful swap, so swap back
                 if (FirstTouched != null && LastTouched != null)
@@ -543,29 +551,9 @@ namespace GameForestMatch3.Logic
                     var col = cell.Col;
                     var row = cell.Row;
 
-                    Points += cell.Points;
+                    Points += Grid[col, row].Points;
 
-
-                    // TODO check if add on the fly works correctly
-                    //if (cell is BonusCell)
-                    //{
-                    //    var toDestroy = ((BonusCell)cell).Action(Grid);
-                    //    matches.Add(toDestroy);
-                    //}
-
-                    //Grid[col, row] = bonusCell;
-
-                    // New bonuses should not be deleted
-                    var isNewBonus = (Grid[col, row] is BonusCell) && (Grid[col, row] as BonusCell).IsNew;
-
-                    if (!isNewBonus)
-                    {
-                        Grid[col, row] = null;
-                        CellDeleted.Invoke(null, new Tuple<int, int>(col, row));
-                        // Move all cells above downwards
-                        MoveDown(col, row);
-                        MovedDown.Invoke(null, new EventArgs());
-                    }
+                    DeleteCell(col, row);
                 }
             }
 
@@ -576,6 +564,28 @@ namespace GameForestMatch3.Logic
             ResetSelected();
         }
 
+
+        void DeleteCell(int col, int row)
+        {
+            var bonus = Grid[col, row] as BonusCell;
+
+            if (bonus == null || bonus.IsEmpty)
+            {
+                Grid[col, row] = null;
+                CellDeleted.Invoke(null, new Tuple<int, int>(col, row));
+                // Move all cells above downwards
+                MoveDown(col, row);
+                MovedDown.Invoke(null, new EventArgs());
+            }
+            else
+            {
+                if (!bonus.IsNew)
+                {
+                    bonus.IsDetonated = true;
+                    DetonatedCell.Invoke(null, new Tuple<int, int>(bonus.Col, bonus.Row));
+                }
+            }
+        }
 
         void ResetNewBonuses()
         {
@@ -616,7 +626,8 @@ namespace GameForestMatch3.Logic
         {
             foreach (var cell in match)
             {
-                if (cell.IsTouched) {
+                if (cell.IsTouched)
+                {
                     System.Diagnostics.Debug.WriteLine($"{cell.Col} {cell.Row}");
                     return cell;
                 }
@@ -775,6 +786,44 @@ namespace GameForestMatch3.Logic
         public Cell GetCell(int col, int row)
         {
             return Grid[col, row];
+        }
+
+
+        public void Detonate()
+        {
+            foreach (var cell in Grid)
+            {
+                if (cell is BonusCell bonus)
+                {
+                    if (bonus.IsDetonated)
+                    {
+                        bonus.IsEmpty = true;
+                        var bonusMatch = bonus.Action(Grid);
+                        foreach (var dead in bonusMatch)
+                        {
+                            if (dead != null)
+                            {
+                                DeleteCell(dead.Col, dead.Row);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        bool HaveToDetonate()
+        {
+            foreach (var cell in Grid)
+            {
+                if (cell is BonusCell bonus)
+                {
+                    if (bonus.IsDetonated)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
     }
 }

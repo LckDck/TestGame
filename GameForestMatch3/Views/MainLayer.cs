@@ -12,6 +12,7 @@ namespace GameForestMatch3.Views
     {
         readonly float CellAnimationDuration = 0.5f;
         readonly float CellAppearingDuration = 0.1f;
+        readonly float DetonationDelay = 0.25f;
         readonly int GameDurationInSeconds = 60;
 
         CellSprite[,] places;
@@ -32,6 +33,8 @@ namespace GameForestMatch3.Views
             GameCore.NoMoreMatches += OnNoMoreMatches;
             GameCore.PointsChanged += OnScoreChanged;
             GameCore.BonusCreated += OnBonusCreated;
+            GameCore.Detonated += OnDetonated;
+            GameCore.DetonatedCell += OnDetonatedCell;
 
             var touchListener = new CCEventListenerTouchOneByOne();
             touchListener.OnTouchBegan = TouchBegan;
@@ -58,6 +61,8 @@ namespace GameForestMatch3.Views
             GameCore.NoMoreMatches -= OnNoMoreMatches;
             GameCore.PointsChanged -= OnScoreChanged;
             GameCore.BonusCreated -= OnBonusCreated;
+            GameCore.Detonated -= OnDetonated;
+            GameCore.DetonatedCell -= OnDetonatedCell;
             RemoveAllListeners();
             RemoveAllChildren(true);
         }
@@ -87,6 +92,24 @@ namespace GameForestMatch3.Views
             }
         }
 
+
+        void OnDetonated(object sender, EventArgs e)
+        {
+            StartDetonationTimer();
+        }
+
+
+        void OnDetonatedCell(object sender, Tuple<int, int> cell)
+        {
+            var gem = gems.Find(item => item.Col == cell.Item1 && item.Row == cell.Item2);
+            var actionIn = new CCEaseIn(new CCScaleTo(0.3f, 1.1f), 4);
+            var actionOut = new CCEaseOut(new CCScaleTo(0.3f, 1f), 4);
+
+            var sequence = new CCSequence(actionIn, actionOut);
+
+            var repeatAction = new CCRepeat(sequence, 100);
+            gem.AddAction(repeatAction);
+        }
 
         void OnCellCreated(object sender, Cell cell)
         {
@@ -128,6 +151,7 @@ namespace GameForestMatch3.Views
             var gem = gems.Find(item => item.Col == col && item.Row == row);
             if (gem != null)
             {
+                gem.StopAllActions();
                 RemoveChild(gem);
                 gems.Remove(gem);
             }
@@ -225,6 +249,24 @@ namespace GameForestMatch3.Views
                 ClearBackgroundColor();
                 GameCore.DestroyMatches();
 
+            });
+            CCSequence sequence = new CCSequence(delayAction, delayCompletedAction);
+            RunAction(sequence);
+        }
+
+
+
+        bool DetonationTimerStarted;
+        void StartDetonationTimer()
+        {
+            if (DetonationTimerStarted) return;
+            DetonationTimerStarted = true;
+
+            var delayAction = new CCDelayTime(DetonationDelay);
+            var delayCompletedAction = new CCCallFunc(() =>
+            {
+                DetonationTimerStarted = false;
+                GameCore.Detonate();
             });
             CCSequence sequence = new CCSequence(delayAction, delayCompletedAction);
             RunAction(sequence);
@@ -441,7 +483,7 @@ namespace GameForestMatch3.Views
                 seconds = GameDurationInSeconds;
                 if (!IsMoving)
                 {
-                    GameOver();
+                    GameCore.Detonate();
                 }
                 TimeIsOut = true;
                 return;
