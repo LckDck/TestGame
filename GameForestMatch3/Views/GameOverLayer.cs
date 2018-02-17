@@ -19,7 +19,7 @@ namespace GameForestMatch3.Views
             Scene.SceneResolutionPolicy = CCSceneResolutionPolicy.ShowAll;
 
 
-            var label = new CCLabelTtf($"GAME OVER\n\nSCORE:\n{Score}", "arial", 22)
+            var label = new CCLabelTtf($"GAME OVER\n\nSCORE:\n{Score}", "arial", 40)
             {
                 Color = CCColor3B.Orange,
                 HorizontalAlignment = CCTextAlignment.Center,

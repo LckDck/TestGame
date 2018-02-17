@@ -356,7 +356,7 @@ namespace GameForestMatch3.Views
             var offsetY = (height - fieldWidth - distancesWidth) / 2;
 
             var oneSize = (fieldWidth - distance) / Field.SIZE;
-            GemSize = (int)oneSize - 20;
+            GemSize = (int)(oneSize * 0.8);
 
             for (var i = 0; i < Field.SIZE; i++)
             {
@@ -423,14 +423,16 @@ namespace GameForestMatch3.Views
 
         CCSprite GetBonusView(BonusType bonusType, int positionX, int positionY)
         {
-            CCRect frame = new CCRect(0, 0, GemSize - 30, GemSize - 30);
+            var fullSize = (int)(GemSize * 0.8);
+            var shortSize = (int)(GemSize * 0.2);
+            CCRect frame = new CCRect(0, 0, fullSize, fullSize);
             switch (bonusType)
             {
                 case BonusType.LineHorizontal:
-                    frame = new CCRect(0, 0, GemSize - 20, (int)(GemSize * 0.2));
+                    frame = new CCRect(0, 0, fullSize, shortSize);
                     break;
                 case BonusType.LineVertical:
-                    frame = new CCRect(0, 0, (int)(GemSize * 0.2), GemSize - 20);
+                    frame = new CCRect(0, 0, shortSize, fullSize);
                     break;
                 case BonusType.Bomb:
                     break;
@@ -454,7 +456,7 @@ namespace GameForestMatch3.Views
                 case CellType.Blue:
                     return CCColor3B.Blue;
                 case CellType.Yellow:
-                    return CCColor3B.Yellow;
+                    return CCColor3B.Orange;
                 case CellType.Red:
                     return CCColor3B.Red;
                 case CellType.Purple:
@@ -485,10 +487,10 @@ namespace GameForestMatch3.Views
         }
 
 
-        CCLabelTtf ScoreLabel;
+        CCLabel ScoreLabel;
         void AddScoreLabel()
         {
-            ScoreLabel = new CCLabelTtf("", "arial", 22)
+            ScoreLabel = new CCLabel("", "arial", 40)
             {
                 Color = CCColor3B.Orange,
                 HorizontalAlignment = CCTextAlignment.Center,
@@ -502,17 +504,17 @@ namespace GameForestMatch3.Views
         }
 
 
-        CCLabelTtf TimerLabel;
+        CCLabel TimerLabel;
         void AddTimerLabel()
         {
-            TimerLabel = new CCLabelTtf($"01:00", "arial", 22)
+            TimerLabel = new CCLabel($"01:00", "arial", 60)
             {
                 Color = CCColor3B.Orange,
                 HorizontalAlignment = CCTextAlignment.Center,
                 VerticalAlignment = CCVerticalTextAlignment.Center,
                 AnchorPoint = CCPoint.AnchorMiddle,
                 PositionX = VisibleBoundsWorldspace.Center.X,
-                PositionY = VisibleBoundsWorldspace.UpperRight.Y - 100
+                PositionY = VisibleBoundsWorldspace.UpperRight.Y - 120
             };
             AddChild(TimerLabel);
         }
@@ -540,13 +542,14 @@ namespace GameForestMatch3.Views
 
         void InitiateGameOver()
         {
+            TimeIsOut = true;
             GameCore.DetonateAllMatches();
             if (!IsMoving)
             {
                 IsMoving = true;
                 GameCore.DestroyMatches();
             }
-            TimeIsOut = true;
+
         }
 
         void GameOver()
@@ -556,10 +559,10 @@ namespace GameForestMatch3.Views
 
         Button PlusButton;
         Button MinusButton;
-        CCLabelTtf ColorsCountLabel;
+        CCLabel ColorsCountLabel;
         void InitColorsCountChangeUI()
         {
-            ColorsCountLabel = new CCLabelTtf("", "arial", 22)
+            ColorsCountLabel = new CCLabel("", "arial", 60)
             {
                 Color = CCColor3B.Orange,
                 HorizontalAlignment = CCTextAlignment.Center,
@@ -578,15 +581,15 @@ namespace GameForestMatch3.Views
                 VerticalAlignment = CCVerticalTextAlignment.Center,
                 AnchorPoint = CCPoint.AnchorMiddle,
                 PositionX = VisibleBoundsWorldspace.Center.X,
-                PositionY = ColorsCountLabel.PositionY + 50
+                PositionY = ColorsCountLabel.PositionY + 60
             };
             AddChild(colorsTitle);
 
 
-            MinusButton = new Button("-")
+            MinusButton = new Button("-", 100)
             {
                 PositionX = VisibleBoundsWorldspace.Center.X - 100,
-                PositionY = VisibleBoundsWorldspace.LowerLeft.Y + 50
+                PositionY = VisibleBoundsWorldspace.LowerLeft.Y + 55
             };
 
             MinusButton.Triggered += OnMinus;

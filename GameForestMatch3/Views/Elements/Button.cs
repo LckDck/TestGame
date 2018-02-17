@@ -4,7 +4,7 @@ using CocosSharp;
 namespace GameForestMatch3.Views.Elements
 {
 
-    class Button : CCNode
+    public class Button : CCNode
     {
 
         CCNode child;
@@ -14,7 +14,7 @@ namespace GameForestMatch3.Views.Elements
         public delegate void TriggeredHandler(object sender, EventArgs e);
 
 
-        private Button()
+        protected Button()
         {
             AttachListener();
         }
@@ -27,10 +27,11 @@ namespace GameForestMatch3.Views.Elements
         }
 
 
-        public Button(string text)
+        public Button(string text, int size = 0)
             : this()
         {
-            child = new CCLabel(text, "arial", 60);
+            var fontSize = size == 0 ? 60 : size;
+            child = new CCLabel(text, "arial", fontSize);
             AddChild(child);
 
         }
