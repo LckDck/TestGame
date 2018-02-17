@@ -194,7 +194,7 @@ namespace GameForestMatch3.Views
             }
         }
 
-
+        CCColor3B SelectionColor = new CCColor3B(205, 205, 205);
         void OnTouched()
         {
             IsMoving = true;
@@ -209,7 +209,7 @@ namespace GameForestMatch3.Views
             {
                 col = GameCore.LastTouched.Col;
                 row = GameCore.LastTouched.Row;
-                places[col, row].Color = CCColor3B.DarkGray;
+                places[col, row].Color = SelectionColor;
             }
 
             // Select previously touched gem
@@ -217,7 +217,7 @@ namespace GameForestMatch3.Views
             {
                 col = GameCore.FirstTouched.Col;
                 row = GameCore.FirstTouched.Row;
-                places[col, row].Color = CCColor3B.DarkGray;
+                places[col, row].Color = SelectionColor;
             }
 
             // Trying to move gem to the position corresponding its col and row

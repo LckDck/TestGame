@@ -890,7 +890,7 @@ namespace GameForestMatch3.Logic
             }
             set
             {
-                if (value > 5 || value < 2)
+                if (value > 5 || value < 3)
                 {
                     return;
                 }
