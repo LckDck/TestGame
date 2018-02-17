@@ -10,7 +10,7 @@ namespace GameForestMatch3.Views
 {
     public class MainLayer : CCLayerColor
     {
-        readonly float CellAnimationDuration = 0.5f;
+        readonly float CellAnimationDuration = 0.4f;
         readonly float CellAppearingDuration = 0.1f;
         readonly float DetonationDelay = 0.25f;
         readonly int GameDurationInSeconds = 60;
@@ -26,7 +26,6 @@ namespace GameForestMatch3.Views
             base.AddedToScene();
 
             GameCore = new Field();
-            GameCore.TouchedChanged += OnTouched;
             GameCore.CellDeleted += OnCellDeleted;
             GameCore.MovedDown += OnMovedDown;
             GameCore.CellCreated += OnCellCreated;
@@ -34,7 +33,7 @@ namespace GameForestMatch3.Views
             GameCore.PointsChanged += OnScoreChanged;
             GameCore.BonusCreated += OnBonusCreated;
             GameCore.Detonated += OnDetonated;
-            GameCore.DetonatedCell += OnDetonatedCell;
+            GameCore.ActivatedBonus += OnActivatedBonus;
 
             var touchListener = new CCEventListenerTouchOneByOne();
             touchListener.OnTouchBegan = TouchBegan;
@@ -55,7 +54,6 @@ namespace GameForestMatch3.Views
         public override void Cleanup()
         {
             base.Cleanup();
-            GameCore.TouchedChanged -= OnTouched;
             GameCore.CellDeleted -= OnCellDeleted;
             GameCore.MovedDown -= OnMovedDown;
             GameCore.CellCreated -= OnCellCreated;
@@ -63,7 +61,8 @@ namespace GameForestMatch3.Views
             GameCore.PointsChanged -= OnScoreChanged;
             GameCore.BonusCreated -= OnBonusCreated;
             GameCore.Detonated -= OnDetonated;
-            GameCore.DetonatedCell -= OnDetonatedCell;
+            GameCore.ActivatedBonus -= OnActivatedBonus;
+
             MinusButton.Triggered -= OnMinus;
             PlusButton.Triggered -= OnPlus;
             RemoveAllListeners();
@@ -88,7 +87,42 @@ namespace GameForestMatch3.Views
 
         void OnNoMoreMatches(object sender, EventArgs e)
         {
+            var changeFound = TryToMoveGems();
+
+            // Check if we should wait swap back animation
+            if (changeFound)
+            {
+                StartReleaseFieldTimer();
+            }
+            else
+            {
+                ReleaseField();
+            }
+        }
+
+
+        bool ReleaseFieldTimerStarted;
+        void StartReleaseFieldTimer()
+        {
+            if (ReleaseFieldTimerStarted) return;
+            ReleaseFieldTimerStarted = true;
+            System.Diagnostics.Debug.WriteLine("timer started");
+            var delayAction = new CCDelayTime(CellAnimationDuration + 0.1f);
+            var delayCompletedAction = new CCCallFunc(() =>
+            {
+                ReleaseFieldTimerStarted = false;
+                ReleaseField();
+            });
+            CCSequence sequence = new CCSequence(delayAction, delayCompletedAction);
+            RunAction(sequence);
+        }
+
+
+        private void ReleaseField()
+        {
             IsMoving = false;
+            ClearBackgroundColor();
+
             if (TimeIsOut)
             {
                 GameOver();
@@ -102,17 +136,17 @@ namespace GameForestMatch3.Views
         }
 
 
-        void OnDetonatedCell(object sender, Tuple<int, int> cell)
+        void OnActivatedBonus(object sender, Tuple<int, int> cell)
         {
             var gem = gems.Find(item => item.Col == cell.Item1 && item.Row == cell.Item2);
             var actionIn = new CCEaseIn(new CCScaleTo(0.3f, 1.1f), 4);
             var actionOut = new CCEaseOut(new CCScaleTo(0.3f, 1f), 4);
 
             var sequence = new CCSequence(actionIn, actionOut);
-
             var repeatAction = new CCRepeat(sequence, 10000);
             gem.AddAction(repeatAction);
         }
+
 
         void OnCellCreated(object sender, Cell cell)
         {
@@ -161,12 +195,8 @@ namespace GameForestMatch3.Views
         }
 
 
-        void OnTouched(object sender, EventArgs e)
+        void OnTouched()
         {
-            if (IsMoving)
-            {
-                return;
-            }
             IsMoving = true;
 
             // Clear cell selection 
@@ -191,15 +221,7 @@ namespace GameForestMatch3.Views
             }
 
             // Trying to move gem to the position corresponding its col and row
-            var changeFound = false;
-            foreach (var gem in gems)
-            {
-                var success = MoveGem(gem);
-                if (success)
-                {
-                    changeFound = true;
-                }
-            }
+            var changeFound = TryToMoveGems();
 
             // If there was a move, initiate destroy process
             if (changeFound)
@@ -210,6 +232,21 @@ namespace GameForestMatch3.Views
             {
                 IsMoving = false;
             }
+        }
+
+
+        bool TryToMoveGems()
+        { 
+            var changeFound = false;
+            foreach (var gem in gems)
+            {
+                var success = MoveGem(gem);
+                if (success)
+                {
+                    changeFound = true;
+                }
+            }
+            return changeFound;
         }
 
 
@@ -256,8 +293,6 @@ namespace GameForestMatch3.Views
             CCSequence sequence = new CCSequence(delayAction, delayCompletedAction);
             RunAction(sequence);
         }
-
-
 
 
         bool DetonationTimerStarted;
@@ -434,11 +469,16 @@ namespace GameForestMatch3.Views
 
         bool TouchBegan(CCTouch touch, CCEvent ev)
         {
+            if (IsMoving) {
+                return false;
+            }
             foreach (var place in places)
             {
                 if (place.BoundingBoxTransformedToWorld.ContainsPoint(touch.Location))
                 {
                     GameCore.Touch(place.Col, place.Row);
+                    OnTouched();
+                    return true;
                 }
             }
             return false;
@@ -490,18 +530,23 @@ namespace GameForestMatch3.Views
             if (seconds > GameDurationInSeconds)
             {
                 seconds = GameDurationInSeconds;
-                GameCore.DetonateAllMatches();
-                if (!IsMoving)
-                {
-                    IsMoving = true;
-                    GameCore.DestroyMatches();
-                }
-                TimeIsOut = true;
+                InitiateGameOver();
                 return;
             }
             var rest = 60 - seconds;
             var secondsString = rest > 9 ? rest.ToString() : "0" + rest;
             TimerLabel.Text = $"00:{secondsString}";
+        }
+
+        void InitiateGameOver()
+        {
+            GameCore.DetonateAllMatches();
+            if (!IsMoving)
+            {
+                IsMoving = true;
+                GameCore.DestroyMatches();
+            }
+            TimeIsOut = true;
         }
 
         void GameOver()
@@ -514,9 +559,6 @@ namespace GameForestMatch3.Views
         CCLabelTtf ColorsCountLabel;
         void InitColorsCountChangeUI()
         {
-            
-
-
             ColorsCountLabel = new CCLabelTtf("", "arial", 22)
             {
                 Color = CCColor3B.Orange,

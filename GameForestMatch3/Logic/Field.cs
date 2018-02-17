@@ -70,7 +70,6 @@ namespace GameForestMatch3.Logic
         }
 
 
-        public event EventHandler TouchedChanged;
         public event EventHandler<Tuple<int, int>> CellDeleted;
         public event EventHandler MovedDown;
         public event EventHandler<Cell> CellCreated;
@@ -78,7 +77,7 @@ namespace GameForestMatch3.Logic
         public event EventHandler NoMoreMatches;
         public event EventHandler<BonusCell> BonusCreated;
         public event EventHandler Detonated;
-        public event EventHandler<Tuple<int, int>> DetonatedCell;
+        public event EventHandler<Tuple<int, int>> ActivatedBonus;
 
 
         readonly List<CellType> TypeList = Enum.GetValues(typeof(CellType)).OfType<CellType>().ToList();
@@ -529,7 +528,6 @@ namespace GameForestMatch3.Logic
 
                 //Remove cells selection
                 ResetSelected();
-                TouchedChanged.Invoke(null, new EventArgs());
                 return;
             }
 
@@ -593,7 +591,7 @@ namespace GameForestMatch3.Logic
                 if (!bonus.IsNew && !bonus.IsDetonated)
                 {
                     bonus.IsDetonated = true;
-                    DetonatedCell.Invoke(null, new Tuple<int, int>(bonus.Col, bonus.Row));
+                    ActivatedBonus.Invoke(null, new Tuple<int, int>(bonus.Col, bonus.Row));
                 }
             }
         }
@@ -767,7 +765,6 @@ namespace GameForestMatch3.Logic
                     ResetSelected();
                 }
             }
-            TouchedChanged.Invoke(null, new EventArgs());
         }
 
 
@@ -844,7 +841,7 @@ namespace GameForestMatch3.Logic
                         {
                             System.Diagnostics.Debug.WriteLine($"Bonus detonated by bonus {deadBonus.Col} {deadBonus.Col}");
                             deadBonus.IsDetonated = true;
-                            DetonatedCell.Invoke(null, new Tuple<int, int>(deadBonus.Col, deadBonus.Row));
+                            ActivatedBonus.Invoke(null, new Tuple<int, int>(deadBonus.Col, deadBonus.Row));
                         }
                     }
                 }
