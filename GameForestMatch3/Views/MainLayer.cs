@@ -48,6 +48,7 @@ namespace GameForestMatch3.Views
             AddScoreLabel();
             AddTimerLabel();
             InitTimer();
+            InitColorsCountChangeUI();
         }
 
 
@@ -63,6 +64,8 @@ namespace GameForestMatch3.Views
             GameCore.BonusCreated -= OnBonusCreated;
             GameCore.Detonated -= OnDetonated;
             GameCore.DetonatedCell -= OnDetonatedCell;
+            MinusButton.Triggered -= OnMinus;
+            PlusButton.Triggered -= OnPlus;
             RemoveAllListeners();
             RemoveAllChildren(true);
         }
@@ -79,7 +82,7 @@ namespace GameForestMatch3.Views
 
         void OnScoreChanged(object sender, EventArgs e)
         {
-            ScoreLabel.Text = $"SCORE: {GameCore.Points}";
+            SetScoreText();
         }
 
 
@@ -107,7 +110,7 @@ namespace GameForestMatch3.Views
 
             var sequence = new CCSequence(actionIn, actionOut);
 
-            var repeatAction = new CCRepeat(sequence, 100);
+            var repeatAction = new CCRepeat(sequence, 10000);
             gem.AddAction(repeatAction);
         }
 
@@ -256,10 +259,14 @@ namespace GameForestMatch3.Views
 
 
 
+
         bool DetonationTimerStarted;
         void StartDetonationTimer()
         {
-            if (DetonationTimerStarted) return;
+            if (DetonationTimerStarted) 
+            {
+                StopAction(0);
+            }
             DetonationTimerStarted = true;
 
             var delayAction = new CCDelayTime(DetonationDelay);
@@ -269,6 +276,7 @@ namespace GameForestMatch3.Views
                 GameCore.Detonate();
             });
             CCSequence sequence = new CCSequence(delayAction, delayCompletedAction);
+            sequence.Tag = 0;
             RunAction(sequence);
         }
 
@@ -384,10 +392,10 @@ namespace GameForestMatch3.Views
             switch (bonusType)
             {
                 case BonusType.LineHorizontal:
-                    frame = new CCRect(0, 0, GemSize - 20, GemSize - 60);
+                    frame = new CCRect(0, 0, GemSize - 20, (int)(GemSize * 0.2));
                     break;
                 case BonusType.LineVertical:
-                    frame = new CCRect(0, 0, GemSize - 60, GemSize - 20);
+                    frame = new CCRect(0, 0, (int)(GemSize * 0.2), GemSize - 20);
                     break;
                 case BonusType.Bomb:
                     break;
@@ -440,7 +448,7 @@ namespace GameForestMatch3.Views
         CCLabelTtf ScoreLabel;
         void AddScoreLabel()
         {
-            ScoreLabel = new CCLabelTtf($"SCORE: {GameCore.Points}", "arial", 22)
+            ScoreLabel = new CCLabelTtf("", "arial", 22)
             {
                 Color = CCColor3B.Orange,
                 HorizontalAlignment = CCTextAlignment.Center,
@@ -449,6 +457,7 @@ namespace GameForestMatch3.Views
                 PositionX = VisibleBoundsWorldspace.Center.X,
                 PositionY = VisibleBoundsWorldspace.UpperRight.Y - 50
             };
+            SetScoreText();
             AddChild(ScoreLabel);
         }
 
@@ -481,9 +490,11 @@ namespace GameForestMatch3.Views
             if (seconds > GameDurationInSeconds)
             {
                 seconds = GameDurationInSeconds;
+                GameCore.DetonateAllMatches();
                 if (!IsMoving)
                 {
-                    GameCore.Detonate();
+                    IsMoving = true;
+                    GameCore.DestroyMatches();
                 }
                 TimeIsOut = true;
                 return;
@@ -496,6 +507,80 @@ namespace GameForestMatch3.Views
         void GameOver()
         {
             Window.DefaultDirector.ReplaceScene(GameOverLayer.GameOverLayerScene(Window, GameCore.Points));
+        }
+
+        Button PlusButton;
+        Button MinusButton;
+        CCLabelTtf ColorsCountLabel;
+        void InitColorsCountChangeUI()
+        {
+            
+
+
+            ColorsCountLabel = new CCLabelTtf("", "arial", 22)
+            {
+                Color = CCColor3B.Orange,
+                HorizontalAlignment = CCTextAlignment.Center,
+                VerticalAlignment = CCVerticalTextAlignment.Center,
+                AnchorPoint = CCPoint.AnchorMiddle,
+                PositionX = VisibleBoundsWorldspace.Center.X,
+                PositionY = VisibleBoundsWorldspace.LowerLeft.Y + 50
+            };
+            SetColorsText();
+            AddChild(ColorsCountLabel);
+
+            var colorsTitle = new CCLabelTtf("Number of colors:", "arial", 22)
+            {
+                Color = CCColor3B.Orange,
+                HorizontalAlignment = CCTextAlignment.Center,
+                VerticalAlignment = CCVerticalTextAlignment.Center,
+                AnchorPoint = CCPoint.AnchorMiddle,
+                PositionX = VisibleBoundsWorldspace.Center.X,
+                PositionY = ColorsCountLabel.PositionY + 50
+            };
+            AddChild(colorsTitle);
+
+
+            MinusButton = new Button("-")
+            {
+                PositionX = VisibleBoundsWorldspace.Center.X - 100,
+                PositionY = VisibleBoundsWorldspace.LowerLeft.Y + 50
+            };
+
+            MinusButton.Triggered += OnMinus;
+            AddChild(MinusButton);
+
+
+            PlusButton = new Button("+")
+            {
+                PositionX = VisibleBoundsWorldspace.Center.X + 100,
+                PositionY = VisibleBoundsWorldspace.LowerLeft.Y + 50
+            };
+
+            PlusButton.Triggered += OnPlus;
+            AddChild(PlusButton);
+        }
+
+        void SetColorsText()
+        {
+            ColorsCountLabel.Text = GameCore.ColorsCount.ToString();
+        }
+
+        void SetScoreText()
+        {
+            ScoreLabel.Text = $"SCORE: {GameCore.Points}";
+        }
+
+        void OnPlus(object sender, EventArgs e)
+        {
+            GameCore.ColorsCount++;
+            SetColorsText();
+        }
+
+        void OnMinus(object sender, EventArgs e)
+        {
+            GameCore.ColorsCount--;
+            SetColorsText();
         }
     }
 }

@@ -82,6 +82,7 @@ namespace GameForestMatch3.Logic
 
 
         readonly List<CellType> TypeList = Enum.GetValues(typeof(CellType)).OfType<CellType>().ToList();
+        readonly List<CellType> UsedTypesList = Enum.GetValues(typeof(CellType)).OfType<CellType>().ToList();
 
         Cell _lastTouched;
         public Cell LastTouched
@@ -408,6 +409,10 @@ namespace GameForestMatch3.Logic
                     }
                 }
             }
+
+            // To let bonuses detonate we don't count as match combinations with more than two bonuses
+            matchList.RemoveAll(match => match.Count(cell => (cell is BonusCell)) > 2);
+
             return matchList;
         }
 
@@ -450,7 +455,7 @@ namespace GameForestMatch3.Logic
 
         CellType GenerateType(List<CellType> except = null)
         {
-            if (except == null) except = new List<CellType>() { };
+            if (except == null) except = TypeList.Except(UsedTypesList).ToList();
 
             // Can not except more types than total amount of types
             if (except.Distinct().Count() >= TypeList.Count())
@@ -536,11 +541,16 @@ namespace GameForestMatch3.Logic
                 // Trying to get bonus cells for this match.
                 // There can be more then one bonus for each match, cause bomb appears on 
                 // every intersection of vertical and horizontal match of the same color.
-                var bonusCellsPlaces = GetBonusPlaceCells(matches[i], LastTouched, FirstTouched);
+                var bonusCellsPlaces = GetBonusPlaceCells(matches[i]);
                 var bonusCells = GetBonusCells(matches[i].First().Type, matches[i], bonusCellsPlaces);
                 foreach (var bonus in bonusCells)
                 {
-                    CellDeleted.Invoke(null, new Tuple<int, int>(bonus.Col, bonus.Row));
+                    // Don't add bonus to the cell which already has a bonus
+                    if (Grid[bonus.Col, bonus.Row] is BonusCell)
+                    {
+                        continue;
+                    }
+                    InvokeCellDeleted(bonus.Col, bonus.Row, Grid[bonus.Col, bonus.Row].Points);
                     Grid[bonus.Col, bonus.Row] = bonus;
                     BonusCreated(null, bonus);
                 }
@@ -551,9 +561,7 @@ namespace GameForestMatch3.Logic
                     var col = cell.Col;
                     var row = cell.Row;
 
-                    Points += Grid[col, row].Points;
-
-                    DeleteCell(col, row);
+                    DeleteCell(col, row, cell.Points);
                 }
             }
 
@@ -565,27 +573,38 @@ namespace GameForestMatch3.Logic
         }
 
 
-        void DeleteCell(int col, int row)
+        void DeleteCell(int col, int row, int points)
         {
             var bonus = Grid[col, row] as BonusCell;
-
             if (bonus == null || bonus.IsEmpty)
             {
+                if (Grid[col, row] == null)
+                {
+                    return;
+                }
                 Grid[col, row] = null;
-                CellDeleted.Invoke(null, new Tuple<int, int>(col, row));
+                InvokeCellDeleted(col, row, points);
                 // Move all cells above downwards
                 MoveDown(col, row);
                 MovedDown.Invoke(null, new EventArgs());
             }
             else
             {
-                if (!bonus.IsNew)
+                if (!bonus.IsNew && !bonus.IsDetonated)
                 {
                     bonus.IsDetonated = true;
                     DetonatedCell.Invoke(null, new Tuple<int, int>(bonus.Col, bonus.Row));
                 }
             }
         }
+
+        void InvokeCellDeleted(int col, int row, int points)
+        {
+            CellDeleted.Invoke(null, new Tuple<int, int>(col, row));
+            Points += points;
+        }
+
+
 
         void ResetNewBonuses()
         {
@@ -599,7 +618,7 @@ namespace GameForestMatch3.Logic
         }
 
 
-        List<Cell> GetBonusPlaceCells(List<Cell> match, Cell lastTouched, Cell firstTouched)
+        List<Cell> GetBonusPlaceCells(List<Cell> match)
         {
             var result = new List<Cell>();
             if (match.Count() < 4)
@@ -702,6 +721,7 @@ namespace GameForestMatch3.Logic
                             intersection.ToList().ForEach(item => item.IsCenter = true);
 
                             matches[i].AddRange(matches[j]);
+                            matches[i].Distinct();
                             matches.Remove(matches[j]);
                             intersectionFound = true;
                             break;
@@ -791,25 +811,50 @@ namespace GameForestMatch3.Logic
 
         public void Detonate()
         {
+            bool success = false;
+
+            var bonusesToDetonate = new List<BonusCell>();
             foreach (var cell in Grid)
             {
                 if (cell is BonusCell bonus)
                 {
                     if (bonus.IsDetonated)
                     {
-                        bonus.IsEmpty = true;
-                        var bonusMatch = bonus.Action(Grid);
-                        foreach (var dead in bonusMatch)
+                        bonusesToDetonate.Add(bonus);
+                        System.Diagnostics.Debug.WriteLine($"{bonus.Col} {bonus.Row}");
+                    }
+                }
+            }
+
+            foreach (var bonus in bonusesToDetonate)
+            {
+                bonus.IsEmpty = true;
+                success = true;
+                var bonusMatch = bonus.Action(Grid);
+                foreach (var dead in bonusMatch)
+                {
+                    if (dead != null)
+                    {
+                        var deadBonus = dead as BonusCell;
+                        if (deadBonus == null || deadBonus.IsEmpty || dead.Col == bonus.Col && dead.Row == bonus.Row)
                         {
-                            if (dead != null)
-                            {
-                                DeleteCell(dead.Col, dead.Row);
-                            }
+                            DeleteCell(dead.Col, dead.Row, dead.Points);
+                        }
+                        else if (!deadBonus.IsDetonated)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Bonus detonated by bonus {deadBonus.Col} {deadBonus.Col}");
+                            deadBonus.IsDetonated = true;
+                            DetonatedCell.Invoke(null, new Tuple<int, int>(deadBonus.Col, deadBonus.Row));
                         }
                     }
                 }
             }
+            if (!success)
+            {
+                NoMoreMatches.Invoke(null, new EventArgs());
+            }
         }
+
 
         bool HaveToDetonate()
         {
@@ -817,13 +862,47 @@ namespace GameForestMatch3.Logic
             {
                 if (cell is BonusCell bonus)
                 {
-                    if (bonus.IsDetonated)
+                    if (bonus.IsDetonated && !bonus.IsEmpty)
                     {
                         return true;
                     }
                 }
             }
             return false;
+        }
+
+
+        public void DetonateAllMatches()
+        {
+            foreach (var cell in Grid)
+            {
+                if (cell is BonusCell bonus)
+                {
+                    bonus.IsDetonated = true;
+                }
+            }
+        }
+
+
+
+        public int ColorsCount
+        {
+            get
+            {
+                return UsedTypesList.Count();
+            }
+            set
+            {
+                if (value > 5 || value < 2)
+                {
+                    return;
+                }
+                UsedTypesList.Clear();
+                for (var i = 0; i < value; i++)
+                {
+                    UsedTypesList.Add(TypeList[i]);
+                }
+            }
         }
     }
 }

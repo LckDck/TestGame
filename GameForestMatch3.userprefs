@@ -1,14 +1,15 @@
 ﻿<Properties StartupConfiguration="{2F7FBEC8-4649-4808-98FE-17F48F26611D}|Default">
-  <MonoDevelop.Ide.Workbench ActiveDocument="GameForestMatch3/Logic/BonusCell.cs">
+  <MonoDevelop.Ide.Workbench ActiveDocument="GameForestMatch3/Views/GameOverLayer.cs">
     <Files>
-      <File FileName="GameForestMatch3/Views/MainLayer.cs" Line="253" Column="34" />
-      <File FileName="GameForestMatch3/Logic/Field.cs" Line="797" Column="38" />
+      <File FileName="GameForestMatch3/Views/MainLayer.cs" Line="510" Column="28" />
+      <File FileName="GameForestMatch3/Logic/Field.cs" Line="910" Column="17" />
       <File FileName="GameForestMatch3/Views/Elements/CellSprite.cs" Line="6" Column="18" />
       <File FileName="GameForestMatch3/Views/Elements/GemSprite.cs" Line="13" Column="25" />
-      <File FileName="GameForestMatch3/Logic/Cell.cs" Line="11" Column="44" />
+      <File FileName="GameForestMatch3/Logic/Cell.cs" Line="4" Column="18" />
       <File FileName="GameForestMatch3/CocosApplicationDelegate.cs" Line="18" Column="44" />
       <File FileName="GameForestMatch3/Views/MenuLayer.cs" Line="36" Column="10" />
-      <File FileName="GameForestMatch3/Logic/BonusCell.cs" Line="15" Column="1" />
+      <File FileName="GameForestMatch3/Logic/BonusCell.cs" Line="13" Column="6" />
+      <File FileName="GameForestMatch3/Views/GameOverLayer.cs" Line="33" Column="13" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
