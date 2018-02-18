@@ -17,7 +17,7 @@ namespace GameForestMatch3
 
             CCScene.SetDefaultDesignResolution(desiredWidth, desiredHeight, CCSceneResolutionPolicy.ExactFit);
 
-            CCScene scene = MainLayer.GameLayerScene(mainWindow);
+            CCScene scene = MenuLayer.GameStartLayerScene(mainWindow);
             mainWindow.RunWithScene(scene);
         }
 

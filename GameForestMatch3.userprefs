@@ -1,18 +1,21 @@
 ﻿<Properties StartupConfiguration="{2F7FBEC8-4649-4808-98FE-17F48F26611D}|Default">
-  <MonoDevelop.Ide.Workbench ActiveDocument="GameForestMatch3/Views/MainLayer.cs">
+  <MonoDevelop.Ide.Workbench ActiveDocument="GameForestMatch3/CocosApplicationDelegate.cs">
     <Files>
-      <File FileName="GameForestMatch3/Views/MainLayer.cs" Line="201" Column="13" />
-      <File FileName="GameForestMatch3/Logic/Field.cs" Line="891" Column="16" />
+      <File FileName="GameForestMatch3/Views/MainLayer.cs" Line="233" Column="29" />
+      <File FileName="GameForestMatch3/Logic/Field.cs" Line="279" Column="75" />
       <File FileName="GameForestMatch3/Views/Elements/Button.cs" Line="30" Column="49" />
-      <File FileName="GameForestMatch3/Views/GameOverLayer.cs" Line="18" Column="13" />
+      <File FileName="GameForestMatch3/Views/GameOverLayer.cs" Line="14" Column="25" />
       <File FileName="GameForestMatch3/Logic/CellType.cs" Line="7" Column="15" />
+      <File FileName="GameForestMatch3/Properties/AndroidManifest.xml" Line="5" Column="12" />
+      <File FileName="GameForestMatch3/Views/Elements/GemSprite.cs" Line="17" Column="1" />
+      <File FileName="GameForestMatch3/CocosApplicationDelegate.cs" Line="20" Column="38" />
     </Files>
   </MonoDevelop.Ide.Workbench>
-  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Release" />
   <MonoDevelop.Ide.DebuggingService.Breakpoints>
     <BreakpointStore />
   </MonoDevelop.Ide.DebuggingService.Breakpoints>
   <MonoDevelop.Ide.DebuggingService.PinnedWatches />
-  <MonoDevelop.Ide.ItemProperties.GameForestMatch3 PreferredExecutionTarget="Android.Android_Accelerated_x86" />
+  <MonoDevelop.Ide.ItemProperties.GameForestMatch3 PreferredExecutionTarget="Android.4a3ee032" />
   <MultiItemStartupConfigurations />
 </Properties>

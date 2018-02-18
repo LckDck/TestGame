@@ -10,7 +10,7 @@ namespace GameForestMatch3.Views
 {
     public class MainLayer : CCLayerColor
     {
-        readonly float CellAnimationDuration = 0.4f;
+        readonly float CellAnimationDuration = 0.5f;
         readonly float CellAppearingDuration = 0.1f;
         readonly float DetonationDelay = 0.25f;
         readonly int GameDurationInSeconds = 60;
@@ -87,41 +87,15 @@ namespace GameForestMatch3.Views
 
         void OnNoMoreMatches(object sender, EventArgs e)
         {
-            var changeFound = TryToMoveGems();
-
-            // Check if we should wait swap back animation
-            if (changeFound)
-            {
-                StartReleaseFieldTimer();
-            }
-            else
-            {
-                ReleaseField();
-            }
+            CheckChanges();
         }
 
 
-        bool ReleaseFieldTimerStarted;
-        void StartReleaseFieldTimer()
-        {
-            if (ReleaseFieldTimerStarted) return;
-            ReleaseFieldTimerStarted = true;
-            System.Diagnostics.Debug.WriteLine("timer started");
-            var delayAction = new CCDelayTime(CellAnimationDuration + 0.1f);
-            var delayCompletedAction = new CCCallFunc(() =>
-            {
-                ReleaseFieldTimerStarted = false;
-                ReleaseField();
-            });
-            CCSequence sequence = new CCSequence(delayAction, delayCompletedAction);
-            RunAction(sequence);
-        }
 
-
-        private void ReleaseField()
+        void ReleaseField()
         {
             IsMoving = false;
-            ClearBackgroundColor();
+            //ClearBackgroundColor();
 
             if (TimeIsOut)
             {
@@ -152,7 +126,7 @@ namespace GameForestMatch3.Views
         {
             var gem = CreateGem(cell.Type, cell.Col, cell.Row);
             gem.Scale = 0.5f;
-            gem.AddAction (new CCScaleTo(CellAppearingDuration, 1));
+            gem.AddAction(new CCScaleTo(CellAppearingDuration, 1));
             AddChild(gem);
         }
 
@@ -195,7 +169,7 @@ namespace GameForestMatch3.Views
         }
 
         CCColor3B SelectionColor = new CCColor3B(205, 205, 205);
-        void OnTouched()
+        void CheckChanges()
         {
             IsMoving = true;
 
@@ -228,15 +202,21 @@ namespace GameForestMatch3.Views
             {
                 StartDestroyTimer();
             }
+            else if (TimeIsOut && GameCore.HasBonuses())
+            {
+                GameCore.DetonateAllMatches();
+                StartDestroyTimer();
+            }
             else
             {
-                IsMoving = false;
+                ReleaseField();
+                //IsMoving = false;
             }
         }
 
 
         bool TryToMoveGems()
-        { 
+        {
             var changeFound = false;
             foreach (var gem in gems)
             {
@@ -298,7 +278,7 @@ namespace GameForestMatch3.Views
         bool DetonationTimerStarted;
         void StartDetonationTimer()
         {
-            if (DetonationTimerStarted) 
+            if (DetonationTimerStarted)
             {
                 StopAction(0);
             }
@@ -456,7 +436,7 @@ namespace GameForestMatch3.Views
                 case CellType.Blue:
                     return CCColor3B.Blue;
                 case CellType.Yellow:
-                    return CCColor3B.Orange;
+                    return CCColor3B.Yellow;
                 case CellType.Red:
                     return CCColor3B.Red;
                 case CellType.Purple:
@@ -471,7 +451,8 @@ namespace GameForestMatch3.Views
 
         bool TouchBegan(CCTouch touch, CCEvent ev)
         {
-            if (IsMoving) {
+            if (IsMoving)
+            {
                 return false;
             }
             foreach (var place in places)
@@ -479,7 +460,7 @@ namespace GameForestMatch3.Views
                 if (place.BoundingBoxTransformedToWorld.ContainsPoint(touch.Location))
                 {
                     GameCore.Touch(place.Col, place.Row);
-                    OnTouched();
+                    CheckChanges();
                     return true;
                 }
             }

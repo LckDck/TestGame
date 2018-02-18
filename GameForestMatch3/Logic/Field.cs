@@ -645,7 +645,6 @@ namespace GameForestMatch3.Logic
             {
                 if (cell.IsTouched)
                 {
-                    System.Diagnostics.Debug.WriteLine($"{cell.Col} {cell.Row}");
                     return cell;
                 }
             }
@@ -818,7 +817,6 @@ namespace GameForestMatch3.Logic
                     if (bonus.IsDetonated)
                     {
                         bonusesToDetonate.Add(bonus);
-                        System.Diagnostics.Debug.WriteLine($"{bonus.Col} {bonus.Row}");
                     }
                 }
             }
@@ -839,7 +837,6 @@ namespace GameForestMatch3.Logic
                         }
                         else if (!deadBonus.IsDetonated)
                         {
-                            System.Diagnostics.Debug.WriteLine($"Bonus detonated by bonus {deadBonus.Col} {deadBonus.Col}");
                             deadBonus.IsDetonated = true;
                             ActivatedBonus.Invoke(null, new Tuple<int, int>(deadBonus.Col, deadBonus.Row));
                         }
@@ -880,6 +877,17 @@ namespace GameForestMatch3.Logic
             }
         }
 
+        public bool HasBonuses() 
+        { 
+            foreach (var cell in Grid)
+            {
+                if (cell is BonusCell bonus)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
 
         public int ColorsCount
